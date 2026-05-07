@@ -177,6 +177,22 @@ body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;h
 .w-ev-name{color:#333;line-height:1.3;}
 .w-ev-teacher{color:#999;font-size:10px;}
 .w-ev-tag{display:inline-block;font-size:9px;font-weight:bold;padding:1px 4px;border-radius:99px;margin-left:2px;vertical-align:middle;}
+.w-mod-area{border-top:1px solid #eef0f8;padding:6px 9px;flex-shrink:0;}
+.w-mod-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.w-mod-head-label{font-size:11px;font-weight:bold;color:#666;}
+.w-mod-add-btn{background:#f8f9ff;border:1px solid #d0d5e8;border-radius:5px;padding:1px 7px;font-size:11px;cursor:pointer;color:#555;font-family:inherit;}
+.w-mod-add-btn:hover{background:#eef0ff;}
+.w-mod-form{background:#f0f4ff;border-radius:6px;padding:6px;margin-bottom:5px;flex-direction:column;gap:3px;}
+.w-mod-form select,.w-mod-form input{border:1px solid #d0d5e8;border-radius:5px;padding:3px 6px;font-size:11px;font-family:inherit;outline:none;background:white;width:100%;}
+.w-mod-form select:focus,.w-mod-form input:focus{border-color:#3b5bdb;}
+.w-mod-save{background:#3b5bdb;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;margin-top:1px;}
+.w-mod-save:hover{background:#364fc7;}
+.w-mod-item{display:flex;align-items:flex-start;gap:5px;padding:3px 5px;border-radius:5px;margin-bottom:2px;}
+.w-mod-badge{font-size:9px;font-weight:bold;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px;}
+.w-mod-body{flex:1;font-size:11px;line-height:1.4;word-break:break-all;}
+.w-mod-mtime{font-size:10px;font-weight:600;margin-right:3px;}
+.w-mod-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;flex-shrink:0;padding:0;}
+.w-mod-del:hover{color:#f03e3e;}
 .w-cl-area{flex:1;padding:7px 9px 9px;overflow-y:auto;min-height:0;}
 
 /* ══════════════════════════════════
@@ -517,8 +533,7 @@ function renderCal(){
     const mods=other?[]:getMods(k);
     const sched=SCH[si(date)];
     const hasUrg=cls.some(x=>x.urg&&!x.done);
-    const hasMod=mods.length>0;
-    const MAX_EV=4;
+    const MAX_EV=mods.length>0?3:4;
     const evShown=sched.slice(0,MAX_EV);
     const evMore=sched.length-MAX_EV;
     const cell=document.createElement('div');
@@ -530,7 +545,8 @@ function renderCal(){
       const nm=shortName(s.info);
       return`<div class="c-ev" style="background:${c.bg};color:${c.text}"><span class="c-ev-time">${t}</span>${esc(nm)}</div>`;
     }).join('');
-    cell.innerHTML=`<div class="c-top"><span class="c-num">${date.getDate()}</span>${td?'<span class="c-today-dot"></span>':''}${hasUrg?'<span class="c-urg-dot" style="margin-left:auto">🚨</span>':hasMod?'<span class="c-mod-dot" style="margin-left:auto">📌</span>':''}</div><div class="c-events">${chipsHtml}${evMore>0?`<div class="c-more">+${evMore}개 더</div>`:''}</div>`;
+    const modChipsHtml=mods.map(m=>{const st=MOD_T[m.type]||MOD_T['메모'];return`<div class="c-ev" style="background:${st.bg};color:${st.color}"><span style="font-weight:700;margin-right:2px">[${m.type}]</span>${m.info?esc(m.info.slice(0,8)):''}</div>`;}).join('');
+    cell.innerHTML=`<div class="c-top"><span class="c-num">${date.getDate()}</span>${td?'<span class="c-today-dot"></span>':''}${hasUrg?'<span class="c-urg-dot" style="margin-left:auto">🚨</span>':''}</div><div class="c-events">${chipsHtml}${modChipsHtml}${evMore>0?`<div class="c-more">+${evMore}개 더</div>`:''}</div>`;
     grid.appendChild(cell);
   }
   // legend
@@ -649,12 +665,19 @@ function renderWeek(){
     const col=document.createElement('div');
     col.className='w-col'+(td?' today':'')+(wend?' wend':'');
     const schedRowsHtml=sched.map(s=>{const c=evColor(s.info,s.tag,i,s.time);return`<div class="w-ev-row"><div class="w-ev-bar" style="background:${c.text}"></div><div class="w-ev-info"><div class="w-ev-time">${s.time}</div><div class="w-ev-name">${esc(s.info)}${s.tag?`<span class="w-ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="w-ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('');
+    const modTypeOpts=Object.keys(MOD_T).map(t=>`<option>${t}</option>`).join('');
     col.innerHTML=`<div class="w-head"><div class="w-dayname">${DAY_NAMES[i]}${td?'<span class="w-today-tag">오늘</span>':''}</div><div class="w-date">${date.getMonth()+1}/${date.getDate()}</div><div class="w-cnt">수업 ${sched.length}개</div></div>
     <div class="w-sched-tog" onclick="wTogSched(${i})"><span>수업 시간표</span><span id="wsi${i}">${wSO[i]?'▲':'▼'}</span></div>
     <div class="w-sched-lst${wSO[i]?' open':''}" id="wsl${i}">${schedRowsHtml}</div>
+    <div class="w-mod-area">
+      <div class="w-mod-head"><span class="w-mod-head-label">📌 변경사항</span><button class="w-mod-add-btn" onclick="wTogModForm(${i})">+ 추가</button></div>
+      <div class="w-mod-form" id="wmf${i}" style="display:none"><select id="wmt${i}">${modTypeOpts}</select><input type="text" id="wmtime${i}" placeholder="시간 (예: 16:00-17:30)"><input type="text" id="wminfo${i}" placeholder="수업명 또는 내용"><button class="w-mod-save" onclick="wSaveMod(${i})">추가</button></div>
+      <div id="wml${i}"></div>
+    </div>
     <div class="w-cl-area"><div class="cl-add"><input type="text" id="wci${i}" placeholder="할 일 추가..." maxlength="60" onkeydown="if(event.key==='Enter')wAddCL(${i})"><button class="cl-add-btn" onclick="wAddCL(${i})">+</button></div><div class="cl-list" id="wcl${i}"></div></div>`;
     grid.appendChild(col);
     renderWCL(i,k);
+    renderWMods(i,k);
   }
 }
 function wTogSched(i){wSO[i]=!wSO[i];document.getElementById('wsl'+i).classList.toggle('open',wSO[i]);document.getElementById('wsi'+i).textContent=wSO[i]?'▲':'▼';}
@@ -671,6 +694,30 @@ function wDel(i,idx){const k=dkey(getWD(i)),a=getCL(k);a.splice(idx,1);saveCL(k,
 function weekPrev(){wOff--;wSO={};renderWeek();renderHdrNav();}
 function weekNext(){wOff++;wSO={};renderWeek();renderHdrNav();}
 function weekGoToday(){wOff=0;wSO={};renderWeek();renderHdrNav();}
+function wTogModForm(i){const f=document.getElementById('wmf'+i);f.style.display=f.style.display==='none'?'flex':'none';}
+function wSaveMod(i){
+  const k=dkey(getWD(i));
+  const type=document.getElementById('wmt'+i).value;
+  const time=document.getElementById('wmtime'+i).value.trim();
+  const info=document.getElementById('wminfo'+i).value.trim();
+  if(!info)return;
+  const a=getMods(k);a.push({id:uid(),type,time,info,teacher:''});saveMods(k,a);
+  document.getElementById('wmtime'+i).value='';
+  document.getElementById('wminfo'+i).value='';
+  document.getElementById('wmf'+i).style.display='none';
+  renderWMods(i,k);renderCal();
+}
+function renderWMods(i,k){
+  const el=document.getElementById('wml'+i);if(!el)return;
+  const mods=getMods(k);
+  if(!mods.length){el.innerHTML='<div style="font-size:10px;color:#ccc;padding:2px 0">없음</div>';return;}
+  el.innerHTML=mods.map((m,idx)=>{const st=MOD_T[m.type]||MOD_T['메모'];return`<div class="w-mod-item" style="background:${st.bg}"><span class="w-mod-badge" style="background:${st.color};color:white">${m.type}</span><div class="w-mod-body">${m.time?`<span class="w-mod-mtime" style="color:${st.color}">${esc(m.time)}</span>`:''}<span>${esc(m.info)}</span></div><button class="w-mod-del" onclick="wDelMod('${k}',${idx})">×</button></div>`;}).join('');
+}
+function wDelMod(k,idx){
+  const a=getMods(k);a.splice(idx,1);saveMods(k,a);
+  for(let i=0;i<7;i++){if(dkey(getWD(i))===k){renderWMods(i,k);break;}}
+  renderCal();
+}
 
 // ══════════════════════════════════════════
 //  TAB 3: URGENT
