@@ -231,13 +231,14 @@ body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;h
 .mine-htitle{font-size:14px;font-weight:bold;color:#1a1a2e;}
 .mine-add-btn{background:#3b5bdb;color:white;border:none;border-radius:8px;padding:5px 13px;font-family:inherit;font-size:12px;cursor:pointer;}
 .mine-add-btn:hover{background:#364fc7;}
-.mine-form{background:white;border-radius:10px;border:1.5px solid #dde1f5;padding:12px;flex-shrink:0;}
-.mine-form-ftitle{font-size:12px;font-weight:bold;color:#333;margin-bottom:8px;}
-.mf-row{display:flex;gap:7px;flex-wrap:wrap;}
-.mf-row select,.mf-row input{border:1.5px solid #e8eaf6;border-radius:7px;padding:5px 9px;font-family:inherit;font-size:12px;outline:none;}
-.mf-row select:focus,.mf-row input:focus{border-color:#3b5bdb;}
-.mf-row select{min-width:80px;flex-shrink:0;}
-.mf-row input{flex:1;min-width:90px;}
+.mine-form{background:white;border-radius:10px;border:1.5px solid #dde1f5;padding:14px;flex-shrink:0;}
+.mine-form-ftitle{font-size:13px;font-weight:bold;color:#333;margin-bottom:10px;}
+.mf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+@media(max-width:700px){.mf-grid{grid-template-columns:repeat(2,1fr);}}
+.mf-field{display:flex;flex-direction:column;gap:3px;}
+.mf-field label{font-size:11px;color:#666;font-weight:600;}
+.mf-field select,.mf-field input{border:1.5px solid #e8eaf6;border-radius:7px;padding:5px 9px;font-family:inherit;font-size:12px;outline:none;}
+.mf-field select:focus,.mf-field input:focus{border-color:#3b5bdb;}
 .mf-btns{display:flex;gap:5px;margin-top:8px;}
 .mf-save{background:#3b5bdb;color:white;border:none;border-radius:7px;padding:6px 15px;font-family:inherit;font-size:12px;cursor:pointer;}
 .mf-save:hover{background:#364fc7;}
@@ -258,10 +259,11 @@ body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;h
 .mine-col-head.off .mine-col-hours{color:#e03131;}
 .mine-col-head.nowork .mine-col-hours{color:#ccc;}
 .mine-col-body{flex:1;padding:7px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
-.mine-card{border-radius:8px;padding:6px 8px;font-size:12px;position:relative;}
-.mine-card-time{font-size:11px;font-weight:600;margin-bottom:2px;}
-.mine-card-subj{color:#333;line-height:1.35;}
-.mine-card-memo{color:#888;font-size:11px;margin-top:2px;}
+.mine-card{border-radius:8px;padding:7px 9px;font-size:12px;position:relative;}
+.mine-card-time{font-size:11px;font-weight:700;margin-bottom:3px;}
+.mine-card-main{font-size:12px;font-weight:600;color:#333;line-height:1.35;}
+.mine-card-school{font-size:10px;color:#aaa;margin-top:1px;}
+.mine-card-teacher{font-size:10px;color:#aaa;margin-top:1px;}
 .mine-card-del{position:absolute;top:4px;right:5px;background:none;border:none;color:rgba(0,0,0,.2);cursor:pointer;font-size:12px;line-height:1;}
 .mine-card-del:hover{color:#f03e3e;}
 .mine-empty{font-size:11px;color:#ccc;text-align:center;padding:14px 0;}
@@ -365,16 +367,36 @@ body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;h
       <div id="mineForm" style="display:none;">
         <div class="mine-form">
           <div class="mine-form-ftitle">수업 추가</div>
-          <div class="mf-row">
-            <select id="mfDay">
-              <option value="0">월요일</option><option value="1">화요일</option>
-              <option value="2">수요일</option><option value="3">목요일</option>
-              <option value="4">금요일</option><option value="5">토요일</option>
-              <option value="6">일요일</option>
-            </select>
-            <input type="text" id="mfTime" placeholder="시간 (예: 16:00-17:30)">
-            <input type="text" id="mfSubj" placeholder="과목 / 학생명">
-            <input type="text" id="mfMemo" placeholder="메모 (선택)">
+          <div class="mf-grid">
+            <div class="mf-field">
+              <label>요일</label>
+              <select id="mfDay">
+                <option value="0">월요일</option><option value="1">화요일</option>
+                <option value="2">수요일</option><option value="3">목요일</option>
+                <option value="4">금요일</option><option value="5">토요일</option>
+                <option value="6">일요일</option>
+              </select>
+            </div>
+            <div class="mf-field">
+              <label>시간</label>
+              <input type="text" id="mfTime" placeholder="예: 16:00-17:30">
+            </div>
+            <div class="mf-field">
+              <label>학교·학년</label>
+              <input type="text" id="mfSchool" placeholder="예: 둔원중1">
+            </div>
+            <div class="mf-field">
+              <label>학생명</label>
+              <input type="text" id="mfStudent" placeholder="예: 권예서">
+            </div>
+            <div class="mf-field">
+              <label>과목</label>
+              <input type="text" id="mfSubj" placeholder="예: 영어">
+            </div>
+            <div class="mf-field">
+              <label>강사</label>
+              <input type="text" id="mfTeacher" placeholder="예: 안리현">
+            </div>
           </div>
           <div class="mf-btns">
             <button class="mf-save" onclick="saveMineClass()">저장</button>
@@ -422,13 +444,13 @@ const MY_DEFAULT=[
   {id:'mw4',day:4,time:'',subject:'휴무',memo:'',type:'off'},
   {id:'mw5',day:5,time:'14:00-22:00',subject:'근무',memo:'',type:'work'},
   {id:'mw6',day:6,time:'11:30-21:00',subject:'근무',memo:'',type:'work'},
-  {id:'mc0',day:0,time:'16:00-17:30',subject:'둔원중1 권예서 영어',memo:'',type:'class'},
-  {id:'mc1',day:0,time:'17:30-19:00',subject:'문정중2 유지오 국어',memo:'',type:'class'},
-  {id:'mc2',day:1,time:'19:00-22:00',subject:'유성고3 고우진 사회문화',memo:'',type:'class'},
-  {id:'mc3',day:2,time:'16:00-17:30',subject:'둔원중1 권예서 영어',memo:'',type:'class'},
-  {id:'mc4',day:2,time:'18:00-21:00',subject:'명석고2 백운성 국어',memo:'',type:'class'},
-  {id:'mc5',day:5,time:'19:00-22:00',subject:'서대전여고2 임유진 영어',memo:'',type:'class'},
-  {id:'mc6',day:6,time:'11:30-14:30',subject:'한빛고1 전겸주 영어',memo:'',type:'class'},
+  {id:'mc0',day:0,time:'16:00-17:30',school:'둔원중1',student:'권예서',subject:'영어',teacher:'안리현',type:'class'},
+  {id:'mc1',day:0,time:'17:30-19:00',school:'문정중2',student:'유지오',subject:'국어',teacher:'안리현',type:'class'},
+  {id:'mc2',day:1,time:'19:00-22:00',school:'유성고3',student:'고우진',subject:'사회문화',teacher:'안리현',type:'class'},
+  {id:'mc3',day:2,time:'16:00-17:30',school:'둔원중1',student:'권예서',subject:'영어',teacher:'안리현',type:'class'},
+  {id:'mc4',day:2,time:'18:00-21:00',school:'명석고2',student:'백운성',subject:'국어',teacher:'안리현',type:'class'},
+  {id:'mc5',day:5,time:'19:00-22:00',school:'서대전여고2',student:'임유진',subject:'영어',teacher:'안리현',type:'class'},
+  {id:'mc6',day:6,time:'11:30-14:30',school:'한빛고1',student:'전겸주',subject:'영어',teacher:'안리현',type:'class'},
 ];
 
 // ── MOD TYPES ──
@@ -465,8 +487,8 @@ function getUrg(){return JSON.parse(localStorage.getItem('urg_v2')||'[]');}
 function saveUrg(a){localStorage.setItem('urg_v2',JSON.stringify(a));}
 function getMods(k){return JSON.parse(localStorage.getItem('mod_'+k)||'[]');}
 function saveMods(k,a){localStorage.setItem('mod_'+k,JSON.stringify(a));}
-function getMine(){return JSON.parse(localStorage.getItem('my_sched_v2')||'null');}
-function saveMine(a){localStorage.setItem('my_sched_v2',JSON.stringify(a));}
+function getMine(){return JSON.parse(localStorage.getItem('my_sched_v3')||'null');}
+function saveMine(a){localStorage.setItem('my_sched_v3',JSON.stringify(a));}
 function fmtAgo(iso){const d=new Date(iso),diff=Math.floor((NOW-d)/86400000);if(diff===0)return'오늘';if(diff===1)return'어제';if(diff<7)return diff+'일 전';return`${d.getMonth()+1}/${d.getDate()}`;}
 function shortName(info){return info.replace(/^[^\s]*고\d*\s*/,'').replace(/^[^\s]*중\d*\s*/,'').slice(0,12);}
 
@@ -787,13 +809,15 @@ function toggleMineForm(){mineFormOpen=!mineFormOpen;document.getElementById('mi
 function saveMineClass(){
   const day=parseInt(document.getElementById('mfDay').value);
   const time=document.getElementById('mfTime').value.trim();
-  const subj=document.getElementById('mfSubj').value.trim();
-  const memo=document.getElementById('mfMemo').value.trim();
-  if(!subj)return;
+  const school=document.getElementById('mfSchool').value.trim();
+  const student=document.getElementById('mfStudent').value.trim();
+  const subject=document.getElementById('mfSubj').value.trim();
+  const teacher=document.getElementById('mfTeacher').value.trim();
+  if(!student&&!subject)return;
   const a=getMine()||[];
-  a.push({id:uid(),day,time,subject:subj,memo,type:'class'});
+  a.push({id:uid(),day,time,school,student,subject,teacher,type:'class'});
   saveMine(a);
-  ['mfTime','mfSubj','mfMemo'].forEach(id=>document.getElementById(id).value='');
+  ['mfTime','mfSchool','mfStudent','mfSubj','mfTeacher'].forEach(id=>document.getElementById(id).value='');
   mineFormOpen=false;document.getElementById('mineForm').style.display='none';
   renderMine();
 }
@@ -818,10 +842,12 @@ function renderMine(){
         ${isOff?'<div class="mine-off-msg">🏖️<br>휴무</div>':
           classes.length?classes.map(c=>{
             const cv={bg:'#ffe3e3',text:'#c92a2a'};
+            const mainText=c.student?`${esc(c.student)} ${esc(c.subject)}`:esc(c.subject||'');
             return`<div class="mine-card" style="background:${cv.bg}">
               ${c.time?`<div class="mine-card-time" style="color:${cv.text}">${esc(c.time)}</div>`:''}
-              <div class="mine-card-subj">${esc(c.subject)}</div>
-              ${c.memo?`<div class="mine-card-memo">${esc(c.memo)}</div>`:''}
+              <div class="mine-card-main">${mainText}</div>
+              ${c.school?`<div class="mine-card-school">${esc(c.school)}</div>`:''}
+              ${c.teacher?`<div class="mine-card-teacher">▸ ${esc(c.teacher)}</div>`:''}
               <button class="mine-card-del" onclick="delMineClass('${c.id}')">×</button>
             </div>`;
           }).join(''):'<div class="mine-empty">수업 없음</div>'}
