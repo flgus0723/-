@@ -387,6 +387,15 @@ const SCH=[
 ];
 const DAY_NAMES=['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
 const NOW=new Date();
+const MY_CLASSES=new Set([
+  '0|16:00-17:30|둔원중1 권예서 영어',
+  '0|17:30-19:00|문정중2 유지오 국어',
+  '1|19:00-22:00|유성고3 고우진 사회문화',
+  '2|16:00-17:30|둔원중1 권예서 영어',
+  '2|18:00-21:00|명석고2 백운성 국어',
+  '5|19:00-22:00|서대전여고2 임유진 영어',
+  '6|11:30-14:30|한빛고1 전겸주 영어',
+]);
 
 // ── 내 시간표 기본 데이터 ──
 const MY_DEFAULT=[
@@ -417,24 +426,15 @@ const MOD_T={
 // ══════════════════════════════════════════
 //  COLOR FUNCTION
 // ══════════════════════════════════════════
-function evColor(info,tag){
-  if(tag==='1:1') return{bg:'#fff3bf',text:'#e67700'};
-  if(/영어|공영/.test(info))   return{bg:'#dbe4ff',text:'#3b5bdb'};
-  if(/수학|대수|확통|미적|수리|현행/.test(info)) return{bg:'#d3f9d8',text:'#2f9e44'};
-  if(/국어|화작/.test(info))   return{bg:'#f3d9fa',text:'#9c36b5'};
-  if(/과학|물리|지구|화학|통합/.test(info)) return{bg:'#ffe8cc',text:'#d9480f'};
-  if(/사회|생윤|역사/.test(info)) return{bg:'#c5f6fa',text:'#0c8599'};
-  if(/스페인|독일|일본|프랑스/.test(info)) return{bg:'#ffd6e7',text:'#c2255c'};
-  return{bg:'#e7f5ff',text:'#1971c2'};
+function evColor(info,tag,di,time){
+  if(tag==='1:1') return{bg:'#fff9db',text:'#e67700'};
+  if(MY_CLASSES.has(`${di}|${time}|${info}`)) return{bg:'#ffe3e3',text:'#c92a2a'};
+  return{bg:'#f1f3f5',text:'#868e96'};
 }
 const LEGEND_ITEMS=[
-  {label:'1:1 수업',bg:'#fff3bf',text:'#e67700'},
-  {label:'영어',bg:'#dbe4ff',text:'#3b5bdb'},
-  {label:'수학계열',bg:'#d3f9d8',text:'#2f9e44'},
-  {label:'국어',bg:'#f3d9fa',text:'#9c36b5'},
-  {label:'과학계열',bg:'#ffe8cc',text:'#d9480f'},
-  {label:'사회계열',bg:'#c5f6fa',text:'#0c8599'},
-  {label:'외국어',bg:'#ffd6e7',text:'#c2255c'},
+  {label:'내 수업',bg:'#ffe3e3',text:'#c92a2a'},
+  {label:'1:1 수업',bg:'#fff9db',text:'#e67700'},
+  {label:'전체 시간표',bg:'#f1f3f5',text:'#868e96'},
 ];
 
 // ══════════════════════════════════════════
@@ -525,7 +525,7 @@ function renderCal(){
     cell.className='c-cell'+(td?' today':'')+(isSat?' sat':'')+(isSun?' sun':'')+(other?' other':'')+(sel?' selected':'');
     if(!other) cell.onclick=()=>selectDate(date);
     const chipsHtml=evShown.map(s=>{
-      const c=evColor(s.info,s.tag);
+      const c=evColor(s.info,s.tag,si(date),s.time);
       const t=s.time.split('-')[0];
       const nm=shortName(s.info);
       return`<div class="c-ev" style="background:${c.bg};color:${c.text}"><span class="c-ev-time">${t}</span>${esc(nm)}</div>`;
@@ -571,7 +571,7 @@ function renderDetail(){
           <span>📋 수업 (${sched.length}개)</span><span id="dSchedIcon">${dSchedOpen?'▲':'▼'}</span>
         </div>
         <div id="dSchedBody" style="display:${dSchedOpen?'block':'none'}">
-          ${sched.map(s=>{const c=evColor(s.info,s.tag);return`<div class="ev-row"><div class="ev-color-bar" style="background:${c.text}"></div><div class="ev-info"><div class="ev-time">${s.time}</div><div class="ev-name">${esc(s.info)}${s.tag?`<span class="ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('')}
+          ${sched.map(s=>{const c=evColor(s.info,s.tag,dow,s.time);return`<div class="ev-row"><div class="ev-color-bar" style="background:${c.text}"></div><div class="ev-info"><div class="ev-time">${s.time}</div><div class="ev-name">${esc(s.info)}${s.tag?`<span class="ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('')}
         </div>
       </div>
       <div class="mod-sec">
@@ -648,7 +648,7 @@ function renderWeek(){
     if(td&&wSO[i]===undefined)wSO[i]=true;
     const col=document.createElement('div');
     col.className='w-col'+(td?' today':'')+(wend?' wend':'');
-    const schedRowsHtml=sched.map(s=>{const c=evColor(s.info,s.tag);return`<div class="w-ev-row"><div class="w-ev-bar" style="background:${c.text}"></div><div class="w-ev-info"><div class="w-ev-time">${s.time}</div><div class="w-ev-name">${esc(s.info)}${s.tag?`<span class="w-ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="w-ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('');
+    const schedRowsHtml=sched.map(s=>{const c=evColor(s.info,s.tag,i,s.time);return`<div class="w-ev-row"><div class="w-ev-bar" style="background:${c.text}"></div><div class="w-ev-info"><div class="w-ev-time">${s.time}</div><div class="w-ev-name">${esc(s.info)}${s.tag?`<span class="w-ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="w-ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('');
     col.innerHTML=`<div class="w-head"><div class="w-dayname">${DAY_NAMES[i]}${td?'<span class="w-today-tag">오늘</span>':''}</div><div class="w-date">${date.getMonth()+1}/${date.getDate()}</div><div class="w-cnt">수업 ${sched.length}개</div></div>
     <div class="w-sched-tog" onclick="wTogSched(${i})"><span>수업 시간표</span><span id="wsi${i}">${wSO[i]?'▲':'▼'}</span></div>
     <div class="w-sched-lst${wSO[i]?' open':''}" id="wsl${i}">${schedRowsHtml}</div>
@@ -735,7 +735,7 @@ function renderMine(){
       <div class="mine-col-body">
         ${isOff?'<div class="mine-off-msg">🏖️<br>휴무</div>':
           classes.length?classes.map(c=>{
-            const cv=evColor(c.subject,'');
+            const cv={bg:'#ffe3e3',text:'#c92a2a'};
             return`<div class="mine-card" style="background:${cv.bg}">
               ${c.time?`<div class="mine-card-time" style="color:${cv.text}">${esc(c.time)}</div>`:''}
               <div class="mine-card-subj">${esc(c.subject)}</div>
