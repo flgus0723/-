@@ -3,7 +3,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ============================
-echo   둔산점 GitHub 저장 중...
+echo   둔산점 저장 + 배포 중...
 echo ============================
 
 git add .
@@ -25,5 +25,5 @@ git push
 
 :done
 echo.
-echo ✅ 완료!
-timeout /t 2 >nul
+echo ✅ 완료! 사이트: https://flgus0723.github.io/-/
+timeout /t 3 >nul
