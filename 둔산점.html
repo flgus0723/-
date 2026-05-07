@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>둔산점</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;height:100vh;display:flex;flex-direction:column;overflow:hidden;color:#1a1a2e;}
+
+/* ── HEADER ── */
+.hdr{background:#3b5bdb;color:white;padding:0 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;height:48px;box-shadow:0 2px 8px rgba(59,91,219,.35);z-index:50;}
+.hdr-title{font-size:15px;font-weight:bold;white-space:nowrap;}
+.hdr-nav{display:flex;align-items:center;gap:6px;margin-left:auto;}
+.hn-btn{background:rgba(255,255,255,.18);border:none;color:white;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;transition:background .15s;white-space:nowrap;}
+.hn-btn:hover{background:rgba(255,255,255,.3);}
+.hn-label{font-size:14px;font-weight:bold;min-width:130px;text-align:center;}
+.hn-today{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.4);color:white;padding:4px 10px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;}
+
+/* ── TAB BAR ── */
+.tab-bar{background:white;border-bottom:2px solid #e8eaf6;display:flex;align-items:stretch;flex-shrink:0;padding:0 8px;z-index:40;overflow-x:auto;}
+.tab-bar::-webkit-scrollbar{height:0;}
+.tab-btn{background:none;border:none;border-bottom:3px solid transparent;padding:9px 14px;font-family:inherit;font-size:13px;color:#999;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap;margin-bottom:-2px;flex-shrink:0;}
+.tab-btn:hover{color:#3b5bdb;background:#f0f2ff;border-radius:8px 8px 0 0;}
+.tab-btn.active{color:#3b5bdb;border-bottom-color:#3b5bdb;font-weight:bold;}
+.tab-badge{background:#f03e3e;color:white;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:99px;}
+.tab-badge.zero{background:#dde1f5;color:#5c6bc0;}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+.tab-panel{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
+.tab-panel.hidden{display:none!important;}
+
+/* ══════════════════════════════════
+   SHARED: CHECKLIST
+══════════════════════════════════ */
+.cl-add{display:flex;gap:5px;margin-bottom:6px;}
+.cl-add input{flex:1;border:1.5px solid #e8eaf6;border-radius:7px;padding:5px 9px;font-family:inherit;font-size:12px;outline:none;min-width:0;}
+.cl-add input:focus{border-color:#3b5bdb;}
+.cl-add input::placeholder{color:#ccc;}
+.cl-add-btn{background:#3b5bdb;color:white;border:none;border-radius:7px;width:26px;height:26px;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.cl-add-btn:hover{background:#364fc7;}
+.cl-list{display:flex;flex-direction:column;gap:4px;}
+.cl-item{display:flex;align-items:flex-start;gap:5px;padding:5px 7px;border-radius:7px;background:#f8f9ff;}
+.cl-item.urg{background:#fff5f5;border:1px solid #ffd0d0;}
+.cl-item.done{background:#f5f5f5;}
+.cl-item.done.urg{background:#f5f5f5;border-color:#eee;}
+.cl-chk{width:16px;height:16px;min-width:16px;border-radius:50%;border:2px solid #c5cae9;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;transition:all .15s;margin-top:1px;}
+.cl-item.done .cl-chk{background:#51cf66;border-color:#51cf66;color:white;}
+.cl-txt{flex:1;font-size:12px;color:#333;word-break:break-all;line-height:1.38;}
+.cl-item.done .cl-txt{text-decoration:line-through;color:#bbb;}
+.cl-urg-btn{font-size:10px;cursor:pointer;opacity:.25;transition:opacity .15s;background:none;border:none;padding:0;margin-top:1px;flex-shrink:0;}
+.cl-urg-btn:hover{opacity:.8;}
+.cl-item.urg .cl-urg-btn{opacity:1;}
+.cl-del-btn{background:none;border:none;color:#ddd;cursor:pointer;font-size:12px;flex-shrink:0;margin-top:1px;}
+.cl-del-btn:hover{color:#f03e3e;}
+.cl-empty{font-size:11px;color:#ccc;text-align:center;padding:10px 0;}
+
+/* ══════════════════════════════════
+   TAB 1: CALENDAR
+══════════════════════════════════ */
+#tabCal{flex-direction:row!important;}
+
+.cal-left{flex:1;display:flex;flex-direction:column;padding:10px;overflow:hidden;min-width:0;}
+.dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;flex-shrink:0;}
+.dow-cell{text-align:center;font-size:11px;font-weight:bold;padding:3px 0;color:#aaa;}
+.dow-cell.sat{color:#e07b00;}.dow-cell.sun{color:#e03131;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;flex:1;overflow:hidden;min-height:0;}
+
+/* calendar cell */
+.c-cell{background:white;border-radius:8px;border:2px solid transparent;padding:4px 5px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;transition:border-color .15s;min-height:0;}
+.c-cell:hover{border-color:#c5cae9;}
+.c-cell.selected{border-color:#3b5bdb;box-shadow:0 2px 10px rgba(59,91,219,.2);}
+.c-cell.today{background:#eef2ff;}
+.c-cell.today .c-num{color:#3b5bdb;font-weight:bold;}
+.c-cell.other{opacity:.3;pointer-events:none;}
+.c-cell.sat .c-num{color:#d9730d;}.c-cell.sun .c-num{color:#e03131;}
+.c-top{display:flex;align-items:center;gap:2px;margin-bottom:2px;flex-shrink:0;}
+.c-num{font-size:12px;font-weight:600;color:#333;line-height:1;}
+.c-today-dot{width:5px;height:5px;border-radius:50%;background:#3b5bdb;flex-shrink:0;}
+.c-mod-dot{font-size:9px;margin-left:auto;}
+.c-urg-dot{font-size:9px;}
+
+/* event chips (Apple Calendar style) */
+.c-events{display:flex;flex-direction:column;gap:1px;flex:1;overflow:hidden;min-height:0;}
+.c-ev{border-radius:3px;padding:1px 4px;font-size:10px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.c-ev-time{font-weight:600;margin-right:2px;opacity:.85;}
+.c-more{font-size:9px;color:#999;padding:1px 3px;flex-shrink:0;}
+
+/* color legend */
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 2px;flex-shrink:0;}
+.leg-item{display:flex;align-items:center;gap:3px;font-size:10px;color:#888;}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* detail panel */
+.detail-panel{width:320px;min-width:320px;background:white;border-left:1px solid #e8eaf6;display:flex;flex-direction:column;overflow:hidden;transition:width .2s;}
+.detail-panel.collapsed{width:0;min-width:0;overflow:hidden;}
+.d-head{padding:12px 14px 9px;border-bottom:1px solid #eef0f8;flex-shrink:0;}
+.d-dayname{font-size:16px;font-weight:bold;}
+.d-dayname.sat{color:#d9730d;}.d-dayname.sun{color:#e03131;}
+.d-date{font-size:11px;color:#999;margin-top:1px;}
+.d-today-pill{display:inline-block;background:#3b5bdb;color:white;font-size:9px;padding:1px 6px;border-radius:99px;margin-left:5px;vertical-align:middle;}
+.d-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.d-sec{border-bottom:1px solid #eef0f8;}
+.d-sec-tog{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;cursor:pointer;font-size:12px;font-weight:bold;color:#5c6bc0;background:#fafbff;user-select:none;}
+.d-sec-tog:hover{background:#f0f2ff;}
+.d-sec-body{}
+
+/* schedule in detail */
+.ev-row{display:flex;align-items:flex-start;gap:7px;padding:6px 14px;border-bottom:1px solid #f5f6ff;}
+.ev-row:last-child{border-bottom:none;}
+.ev-color-bar{width:4px;min-width:4px;border-radius:2px;align-self:stretch;margin-top:2px;}
+.ev-info{}
+.ev-time{font-size:10px;font-weight:600;color:#888;margin-bottom:1px;}
+.ev-name{font-size:12px;color:#333;line-height:1.35;}
+.ev-teacher{font-size:11px;color:#999;margin-top:1px;}
+.ev-tag{display:inline-block;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:99px;margin-left:3px;vertical-align:middle;}
+
+/* modifications */
+.mod-sec{border-bottom:1px solid #eef0f8;padding:8px 12px;}
+.mod-title{font-size:12px;font-weight:bold;color:#333;margin-bottom:7px;display:flex;align-items:center;gap:5px;}
+.mod-add-btn{margin-left:auto;background:#eef0ff;color:#3b5bdb;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit;}
+.mod-add-btn:hover{background:#dde1f5;}
+.mod-form{background:#f8f9ff;border-radius:8px;padding:9px;margin-bottom:7px;display:flex;flex-direction:column;gap:5px;}
+.mod-form select,.mod-form input{border:1.5px solid #e8eaf6;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12px;outline:none;width:100%;}
+.mod-form select:focus,.mod-form input:focus{border-color:#3b5bdb;}
+.mod-fr{display:flex;gap:5px;}
+.mod-fr input{flex:1;}
+.mod-ok{background:#3b5bdb;color:white;border:none;border-radius:6px;padding:6px;font-family:inherit;font-size:12px;cursor:pointer;width:100%;}
+.mod-ok:hover{background:#364fc7;}
+.mod-list{display:flex;flex-direction:column;gap:4px;}
+.mod-item{display:flex;align-items:flex-start;gap:6px;padding:6px 8px;border-radius:7px;font-size:12px;}
+.mod-badge{font-size:10px;font-weight:bold;padding:2px 6px;border-radius:99px;white-space:nowrap;flex-shrink:0;}
+.mod-body{flex:1;line-height:1.4;}
+.mod-mtime{font-size:11px;font-weight:600;margin-bottom:1px;}
+.mod-mdesc{color:#444;}
+.mod-mteacher{color:#999;font-size:11px;}
+.mod-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;}
+.mod-del:hover{color:#f03e3e;}
+
+/* checklist in detail */
+.d-cl-sec{padding:9px 11px 12px;flex:1;}
+.d-cl-title{font-size:12px;font-weight:bold;color:#333;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.d-cl-cnt{background:#e8eaf6;color:#5c6bc0;font-size:10px;padding:1px 6px;border-radius:99px;}
+.d-no-sel{font-size:13px;color:#bbb;text-align:center;padding:40px 14px;line-height:1.8;}
+
+/* ══════════════════════════════════
+   TAB 2: WEEKLY
+══════════════════════════════════ */
+#tabWeek{flex-direction:row!important;overflow-x:auto!important;overflow-y:hidden!important;padding:10px 12px 12px;}
+#tabWeek::-webkit-scrollbar{height:4px;}
+.week-grid{display:flex;gap:8px;min-width:max-content;height:100%;align-items:flex-start;}
+.w-col{width:240px;background:white;border-radius:12px;box-shadow:0 2px 7px rgba(0,0,0,.06);display:flex;flex-direction:column;overflow:hidden;border:2px solid transparent;height:100%;}
+.w-col.today{border-color:#3b5bdb;box-shadow:0 3px 14px rgba(59,91,219,.2);}
+.w-head{padding:9px 12px 7px;background:#f8f9ff;border-bottom:1px solid #eef0f8;flex-shrink:0;}
+.w-col.today .w-head{background:linear-gradient(135deg,#3b5bdb,#4c6ef5);border-bottom:none;}
+.w-col.wend .w-head{background:#fff8f0;}
+.w-col.today.wend .w-head{background:linear-gradient(135deg,#3b5bdb,#4c6ef5);}
+.w-dayname{font-size:13px;font-weight:bold;color:#1a1a2e;}
+.w-col.today .w-dayname{color:white;}
+.w-date{font-size:11px;color:#999;margin-top:1px;}
+.w-col.today .w-date{color:rgba(255,255,255,.8);}
+.w-today-tag{display:inline-block;background:rgba(255,255,255,.22);color:white;font-size:9px;padding:1px 5px;border-radius:99px;margin-left:4px;vertical-align:middle;}
+.w-cnt{font-size:10px;color:#aaa;margin-top:1px;}
+.w-col.today .w-cnt{color:rgba(255,255,255,.7);}
+.w-sched-tog{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;cursor:pointer;border-bottom:1px solid #f0f2ff;background:#fafbff;font-size:11px;color:#5c6bc0;font-weight:500;user-select:none;flex-shrink:0;}
+.w-sched-tog:hover{background:#eef0ff;}
+.w-col.wend .w-sched-tog{background:#fffbf5;color:#e07b00;border-bottom-color:#fff0d8;}
+.w-sched-lst{display:none;flex-direction:column;border-bottom:1px solid #eef0f8;max-height:200px;overflow-y:auto;flex-shrink:0;}
+.w-sched-lst.open{display:flex;}
+/* colored schedule rows in weekly */
+.w-ev-row{display:flex;align-items:flex-start;gap:5px;padding:5px 10px;border-bottom:1px solid #f5f6ff;font-size:11px;}
+.w-ev-row:last-child{border-bottom:none;}
+.w-ev-bar{width:3px;min-width:3px;border-radius:2px;align-self:stretch;margin-top:1px;}
+.w-ev-info{}
+.w-ev-time{font-size:10px;font-weight:600;color:#888;margin-bottom:1px;}
+.w-ev-name{color:#333;line-height:1.3;}
+.w-ev-teacher{color:#999;font-size:10px;}
+.w-ev-tag{display:inline-block;font-size:9px;font-weight:bold;padding:1px 4px;border-radius:99px;margin-left:2px;vertical-align:middle;}
+.w-cl-area{flex:1;padding:7px 9px 9px;overflow-y:auto;min-height:0;}
+
+/* ══════════════════════════════════
+   TAB 3: URGENT
+══════════════════════════════════ */
+#tabUrgent{overflow-y:auto!important;padding:20px;}
+.urg-wrap{max-width:620px;margin:0 auto;width:100%;}
+.urg-title{font-size:18px;font-weight:bold;color:#c92a2a;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.urg-add{display:flex;gap:8px;margin-bottom:14px;}
+.urg-add input{flex:1;border:2px solid #ffc9c9;border-radius:10px;padding:9px 13px;font-family:inherit;font-size:14px;outline:none;}
+.urg-add input:focus{border-color:#f03e3e;}
+.urg-add button{background:#f03e3e;color:white;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:14px;cursor:pointer;white-space:nowrap;}
+.urg-add button:hover{background:#c92a2a;}
+.urg-filter{display:flex;gap:5px;margin-bottom:12px;}
+.urg-filter button{background:white;border:1.5px solid #e8eaf6;border-radius:8px;padding:5px 13px;font-family:inherit;font-size:12px;cursor:pointer;color:#888;transition:all .15s;}
+.urg-filter button.active{background:#f03e3e;border-color:#f03e3e;color:white;font-weight:bold;}
+.urg-list{display:flex;flex-direction:column;gap:7px;}
+.urg-item{display:flex;align-items:flex-start;gap:9px;background:white;border:1.5px solid #ffd0d0;border-radius:12px;padding:11px 13px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.urg-item.done{background:#f9f9f9;border-color:#eee;}
+.urg-chk{width:21px;height:21px;min-width:21px;border-radius:50%;border:2px solid #ffc9c9;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:all .18s;margin-top:1px;}
+.urg-item.done .urg-chk{background:#f03e3e;border-color:#f03e3e;color:white;}
+.urg-body{flex:1;}
+.urg-text{font-size:14px;color:#c92a2a;font-weight:500;line-height:1.4;}
+.urg-item.done .urg-text{text-decoration:line-through;color:#bbb;}
+.urg-meta{font-size:11px;color:#ccc;margin-top:3px;}
+.urg-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:17px;line-height:1;}
+.urg-del:hover{color:#f03e3e;}
+.urg-empty{text-align:center;color:#ccc;padding:40px;font-size:14px;}
+
+/* ══════════════════════════════════
+   TAB 4: MY SCHEDULE
+══════════════════════════════════ */
+#tabMine{flex-direction:column;overflow:hidden;}
+.mine-inner{display:flex;flex-direction:column;height:100%;padding:12px;gap:10px;}
+.mine-hdr{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.mine-htitle{font-size:14px;font-weight:bold;color:#1a1a2e;}
+.mine-add-btn{background:#3b5bdb;color:white;border:none;border-radius:8px;padding:5px 13px;font-family:inherit;font-size:12px;cursor:pointer;}
+.mine-add-btn:hover{background:#364fc7;}
+.mine-form{background:white;border-radius:10px;border:1.5px solid #dde1f5;padding:12px;flex-shrink:0;}
+.mine-form-ftitle{font-size:12px;font-weight:bold;color:#333;margin-bottom:8px;}
+.mf-row{display:flex;gap:7px;flex-wrap:wrap;}
+.mf-row select,.mf-row input{border:1.5px solid #e8eaf6;border-radius:7px;padding:5px 9px;font-family:inherit;font-size:12px;outline:none;}
+.mf-row select:focus,.mf-row input:focus{border-color:#3b5bdb;}
+.mf-row select{min-width:80px;flex-shrink:0;}
+.mf-row input{flex:1;min-width:90px;}
+.mf-btns{display:flex;gap:5px;margin-top:8px;}
+.mf-save{background:#3b5bdb;color:white;border:none;border-radius:7px;padding:6px 15px;font-family:inherit;font-size:12px;cursor:pointer;}
+.mf-save:hover{background:#364fc7;}
+.mf-cancel{background:white;color:#888;border:1.5px solid #e8eaf6;border-radius:7px;padding:6px 13px;font-family:inherit;font-size:12px;cursor:pointer;}
+.mine-cols{display:flex;gap:8px;flex:1;overflow-x:auto;overflow-y:hidden;min-height:0;}
+.mine-cols::-webkit-scrollbar{height:4px;}
+.mine-col{min-width:170px;flex:1;background:white;border-radius:12px;box-shadow:0 2px 7px rgba(0,0,0,.06);display:flex;flex-direction:column;overflow:hidden;height:100%;}
+.mine-col-head{padding:9px 11px 7px;flex-shrink:0;}
+.mine-col-head.work{background:#eef2ff;border-bottom:1px solid #dde1f5;}
+.mine-col-head.off{background:#fff5f5;border-bottom:1px solid #ffd0d0;}
+.mine-col-head.nowork{background:#f8f9ff;border-bottom:1px solid #eef0f8;}
+.mine-col-dayname{font-size:13px;font-weight:bold;}
+.mine-col-head.work .mine-col-dayname{color:#3b5bdb;}
+.mine-col-head.off .mine-col-dayname{color:#e03131;}
+.mine-col-head.nowork .mine-col-dayname{color:#999;}
+.mine-col-hours{font-size:11px;margin-top:2px;}
+.mine-col-head.work .mine-col-hours{color:#5c6bc0;}
+.mine-col-head.off .mine-col-hours{color:#e03131;}
+.mine-col-head.nowork .mine-col-hours{color:#ccc;}
+.mine-col-body{flex:1;padding:7px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+.mine-card{border-radius:8px;padding:6px 8px;font-size:12px;position:relative;}
+.mine-card-time{font-size:11px;font-weight:600;margin-bottom:2px;}
+.mine-card-subj{color:#333;line-height:1.35;}
+.mine-card-memo{color:#888;font-size:11px;margin-top:2px;}
+.mine-card-del{position:absolute;top:4px;right:5px;background:none;border:none;color:rgba(0,0,0,.2);cursor:pointer;font-size:12px;line-height:1;}
+.mine-card-del:hover{color:#f03e3e;}
+.mine-empty{font-size:11px;color:#ccc;text-align:center;padding:14px 0;}
+.mine-off-msg{font-size:13px;color:#e03131;text-align:center;padding:20px 0;font-weight:bold;}
+
+/* ══════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════ */
+@media(max-width:1100px){
+  .detail-panel{width:280px;min-width:280px;}
+}
+@media(max-width:900px){
+  #tabCal{position:relative;}
+  .detail-panel{position:absolute;top:0;right:0;bottom:0;width:100%;max-width:360px;z-index:10;box-shadow:-4px 0 20px rgba(0,0,0,.12);}
+  .detail-panel.collapsed{width:0;max-width:0;}
+  .hdr-title{font-size:14px;}
+  .hn-label{min-width:100px;font-size:13px;}
+  .tab-btn{font-size:12px;padding:8px 10px;}
+}
+@media(max-width:680px){
+  .hdr{padding:0 10px;gap:8px;}
+  .hn-btn{padding:4px 8px;font-size:12px;}
+  .tab-btn span:not(.tab-badge){display:none;}
+  .tab-btn{padding:8px 12px;}
+  .mine-col{min-width:140px;}
+  .w-col{width:200px;}
+}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:translateY(0);}}
+.cl-item{animation:fadeUp .15s ease;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#c5cae9;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-title">📚 둔산점</div>
+  <div class="hdr-nav" id="hdrNav"></div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tbCal"    onclick="switchTab('cal')"><span>📅 달력</span></button>
+  <button class="tab-btn"        id="tbWeek"   onclick="switchTab('week')"><span>📋 주간 체크리스트</span></button>
+  <button class="tab-btn"        id="tbUrgent" onclick="switchTab('urgent')"><span>🚨 급박한 일</span> <span class="tab-badge zero" id="urgTabBadge">0</span></button>
+  <button class="tab-btn"        id="tbMine"   onclick="switchTab('mine')"><span>👤 내 시간표</span></button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ── TAB 1: 달력 ── -->
+  <div class="tab-panel" id="tabCal">
+    <div class="cal-left">
+      <div class="dow-row">
+        <div class="dow-cell">월</div><div class="dow-cell">화</div>
+        <div class="dow-cell">수</div><div class="dow-cell">목</div>
+        <div class="dow-cell">금</div>
+        <div class="dow-cell sat">토</div><div class="dow-cell sun">일</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend" id="calLegend"></div>
+    </div>
+    <div class="detail-panel collapsed" id="detailPanel">
+      <div class="d-no-sel">📅 날짜를 클릭하면<br>시간표가 표시됩니다</div>
+    </div>
+  </div>
+
+  <!-- ── TAB 2: 주간 체크리스트 ── -->
+  <div class="tab-panel hidden" id="tabWeek">
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- ── TAB 3: 급박한 일 ── -->
+  <div class="tab-panel hidden" id="tabUrgent">
+    <div class="urg-wrap">
+      <div class="urg-title">🚨 급박한 일</div>
+      <div class="urg-add">
+        <input type="text" id="urgInput" placeholder="급박한 사안을 입력하고 Enter..." maxlength="120">
+        <button onclick="addUrg()">+ 추가</button>
+      </div>
+      <div class="urg-filter">
+        <button class="active" id="uf0" onclick="setUF('all')">전체</button>
+        <button id="uf1" onclick="setUF('active')">미완료</button>
+        <button id="uf2" onclick="setUF('done')">완료</button>
+      </div>
+      <div class="urg-list" id="urgList"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB 4: 내 시간표 ── -->
+  <div class="tab-panel hidden" id="tabMine">
+    <div class="mine-inner">
+      <div class="mine-hdr">
+        <span class="mine-htitle">👤 내 시간표</span>
+        <button class="mine-add-btn" onclick="toggleMineForm()">+ 수업 추가</button>
+      </div>
+      <div id="mineForm" style="display:none;">
+        <div class="mine-form">
+          <div class="mine-form-ftitle">수업 추가</div>
+          <div class="mf-row">
+            <select id="mfDay">
+              <option value="0">월요일</option><option value="1">화요일</option>
+              <option value="2">수요일</option><option value="3">목요일</option>
+              <option value="4">금요일</option><option value="5">토요일</option>
+              <option value="6">일요일</option>
+            </select>
+            <input type="text" id="mfTime" placeholder="시간 (예: 16:00-17:30)">
+            <input type="text" id="mfSubj" placeholder="과목 / 학생명">
+            <input type="text" id="mfMemo" placeholder="메모 (선택)">
+          </div>
+          <div class="mf-btns">
+            <button class="mf-save" onclick="saveMineClass()">저장</button>
+            <button class="mf-cancel" onclick="toggleMineForm()">취소</button>
+          </div>
+        </div>
+      </div>
+      <div class="mine-cols" id="mineCols"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  SCHEDULE DATA (0=월 ~ 6=일)
+// ══════════════════════════════════════════
+const SCH=[
+  [{time:'14:00-17:00',info:'자퇴생 유현재 과학',teacher:'이재진',tag:'1:1'},{time:'16:00-17:30',info:'둔원중1 권예서 영어',teacher:'안리현',tag:''},{time:'17:30-19:00',info:'문정중2 유지오 국어',teacher:'안리현',tag:''},{time:'17:30-19:00',info:'둔원중1 권예서 수학',teacher:'이재진',tag:''},{time:'17:30-20:30',info:'만년고3 김예원 영어',teacher:'이현직',tag:''},{time:'17:30-19:00',info:'자퇴생 이창윤 수학',teacher:'박나현',tag:'1:1'},{time:'19:00-22:00',info:'충남고3 김건엽 지구과학',teacher:'이재진',tag:''},{time:'19:00-22:00',info:'대전고2 조남웅 대수',teacher:'박나현',tag:''},{time:'19:00-22:00',info:'대신고3 이진서 화작',teacher:'백두열',tag:''},{time:'19:00-22:00',info:'둔원고1 박채원 통합과학',teacher:'김용호',tag:''}],
+  [{time:'14:00-17:00',info:'자퇴생 유현재 대수',teacher:'박이안',tag:'1:1'},{time:'17:00-18:30',info:'삼육중3 우소연 수학',teacher:'이재진',tag:''},{time:'17:30-19:00',info:'만년고3 김예원 영어',teacher:'정재운',tag:''},{time:'19:00-22:00',info:'외고1 강연수, 강연아 스페인어',teacher:'이정',tag:''},{time:'19:00-22:00',info:'호수돈여고1 윤채원 영어',teacher:'정재운',tag:''},{time:'19:00-22:00',info:'대전고2 조남웅 영어',teacher:'한다인',tag:''},{time:'19:00-22:00',info:'유성고3 고우진 사회문화',teacher:'안리현',tag:''}],
+  [{time:'16:00-17:30',info:'둔원중1 권예서 영어',teacher:'안리현',tag:''},{time:'16:00-17:30',info:'재수생 이창윤 수학',teacher:'박나현',tag:'1:1'},{time:'16:00-19:00',info:'자퇴생 유현재 수학',teacher:'박이안',tag:'1:1'},{time:'17:00-20:00',info:'외고2 고은채, 민서희, 양채윤, 박나경 국어',teacher:'김동우',tag:''},{time:'17:30-20:30',info:'외고2 민소윤 대수',teacher:'박나현',tag:''},{time:'17:30-19:00',info:'둔원중1 권예서 수학',teacher:'이재진',tag:''},{time:'18:00-21:00',info:'문정중3 신우림 수학',teacher:'노병혁',tag:''},{time:'18:00-21:00',info:'명석고2 백운성 국어',teacher:'안리현',tag:''},{time:'19:00-22:00',info:'대성고1 신성욱, 호수돈여고1 김시연 과학',teacher:'이재진',tag:''},{time:'19:00-22:00',info:'호수돈여고3 한지율 물리',teacher:'박이안',tag:''},{time:'19:00-22:00',info:'외고2 정희수 영어',teacher:'한다인',tag:''},{time:'19:00-22:00',info:'만년고3 김예원 수학',teacher:'유시연',tag:''},{time:'19:30-22:30',info:'한빛고2 추소영 확통',teacher:'박나현',tag:''}],
+  [{time:'14:00-17:00',info:'자퇴생 유현재 영어',teacher:'이현직',tag:'1:1'},{time:'17:00-20:00',info:'외고1 송민주, 원지윤 스페인어',teacher:'이정',tag:''},{time:'17:30-19:00',info:'삼육중3 우소연 수학',teacher:'백두열',tag:''},{time:'18:00-21:00',info:'외고3 박채아, 김도원, 김효주, 김지수 영어',teacher:'박권식',tag:''},{time:'19:00-22:00',info:'고3 곽진석, 김예원 국어',teacher:'백두열',tag:''},{time:'19:00-22:00',info:'대성고1 신성욱 영어',teacher:'한다인',tag:''}],
+  [{time:'16:00-17:30',info:'문정중2 유지오 국어',teacher:'안리현',tag:''},{time:'17:30-19:00',info:'만년고3 김예원 영어',teacher:'정재운',tag:''},{time:'18:00-21:00',info:'문정중3 신우림 현행수학',teacher:'이재진',tag:''},{time:'18:30-21:30',info:'외고1 박효주 독일어',teacher:'이일형',tag:''},{time:'19:00-22:00',info:'유성고3 고우진 생윤',teacher:'진수아',tag:''},{time:'19:00-22:00',info:'대신고1 이준우 수학',teacher:'노병혁',tag:'1:1'}],
+  [{time:'10:00-13:00',info:'동산고2 신종학 영어',teacher:'박정후',tag:'1:1'},{time:'10:20-13:20',info:'외고2 박나경 대수',teacher:'박나현',tag:''},{time:'11:00-14:00',info:'대전고2 조남웅 미적',teacher:'노병혁',tag:''},{time:'11:00-14:00',info:'한빛고2 추소영 수학',teacher:'박나현',tag:''},{time:'11:00-14:00',info:'대성고3 윤시훈 국어',teacher:'조선영',tag:''},{time:'12:00-15:00',info:'한밭고3 곽진석 영어',teacher:'황주희',tag:''},{time:'14:00-17:00',info:'대성고1 신성욱 수학',teacher:'오동영',tag:''},{time:'14:00-17:00',info:'세국고2 국어',teacher:'김동우',tag:''},{time:'14:00-17:00',info:'세국고1 영어',teacher:'박정후',tag:''},{time:'14:00-17:00',info:'용남고3 수리논술 김윤성',teacher:'박나현',tag:'1:1'},{time:'14:00-17:00',info:'세국고3 김정운 확통',teacher:'노병혁',tag:''},{time:'14:30-17:30',info:'공주사대부고1 천의선 과학',teacher:'이재진',tag:'1:1'},{time:'15:00-18:00',info:'외고1 박소율 공영',teacher:'황주희',tag:''},{time:'16:00-19:00',info:'대전외고1 안지윤 일본어',teacher:'이상연',tag:''},{time:'17:30-20:30',info:'세국고1 국어',teacher:'김동우',tag:''},{time:'18:00-21:00',info:'외고1 김훈식, 박소율 수학',teacher:'노병혁',tag:''},{time:'18:00-21:00',info:'세국고2 영어',teacher:'박정후',tag:''},{time:'18:00-21:00',info:'충남고3 김건엽 영어',teacher:'황주희',tag:'1:1'},{time:'19:00-22:00',info:'둔원고1 박채원 국어',teacher:'김진혁',tag:''},{time:'19:00-22:00',info:'충남외고1 정아인 일본어',teacher:'이상연',tag:'1:1'},{time:'19:00-22:00',info:'서대전여고2 임유진 영어',teacher:'안리현',tag:''}],
+  [{time:'11:00-14:00',info:'대신고3 조재현 국어',teacher:'조선영',tag:''},{time:'11:30-14:30',info:'한빛고1 전겸주 영어',teacher:'안리현',tag:''},{time:'11:30-14:30',info:'이리여고1 김나영 과학',teacher:'이재진',tag:''},{time:'12:00-15:00',info:'갑천중2 박도현 역사',teacher:'김준하',tag:''},{time:'12:00-15:00',info:'외고1 이준상 독일어',teacher:'이일형',tag:''},{time:'14:00-17:00',info:'공주사대부고1 천의선 영어',teacher:'조선영',tag:''},{time:'15:00-18:00',info:'한빛고1 김선우 영어',teacher:'정재운',tag:''},{time:'15:00-18:00',info:'이리여고1 김나영 사회',teacher:'김준하',tag:''},{time:'15:00-18:00',info:'대성고1 신성욱, 민재홍, 김시연 국어',teacher:'김동우',tag:''},{time:'17:00-20:00',info:'한빛고2 정민지 영어',teacher:'조선영',tag:''},{time:'17:30-20:30',info:'만년고3 김예원 수학',teacher:'유시연',tag:''},{time:'18:00-21:00',info:'외고1 이우정 프랑스어',teacher:'정재운',tag:''},{time:'18:00-21:00',info:'고2 유현재, 백운성 국어',teacher:'김동우',tag:''},{time:'19:00-22:00',info:'한밭고3 곽진석 수학',teacher:'유시연',tag:''},{time:'19:00-22:00',info:'동대전고3 김환희 국어',teacher:'김진혁',tag:''}],
+];
+const DAY_NAMES=['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
+const NOW=new Date();
+
+// ── 내 시간표 기본 데이터 ──
+const MY_DEFAULT=[
+  {id:'mw0',day:0,time:'14:00-22:00',subject:'근무',memo:'',type:'work'},
+  {id:'mw1',day:1,time:'14:00-22:00',subject:'근무',memo:'',type:'work'},
+  {id:'mw2',day:2,time:'14:00-22:00',subject:'근무',memo:'',type:'work'},
+  {id:'mw3',day:3,time:'14:00-22:00',subject:'근무',memo:'',type:'work'},
+  {id:'mw4',day:4,time:'',subject:'휴무',memo:'',type:'off'},
+  {id:'mw5',day:5,time:'14:00-22:00',subject:'근무',memo:'',type:'work'},
+  {id:'mw6',day:6,time:'11:30-21:00',subject:'근무',memo:'',type:'work'},
+  {id:'mc0',day:0,time:'16:00-17:30',subject:'둔원중1 권예서 영어',memo:'',type:'class'},
+  {id:'mc1',day:0,time:'17:30-19:00',subject:'문정중2 유지오 국어',memo:'',type:'class'},
+  {id:'mc2',day:1,time:'19:00-22:00',subject:'유성고3 고우진 사회문화',memo:'',type:'class'},
+  {id:'mc3',day:2,time:'16:00-17:30',subject:'둔원중1 권예서 영어',memo:'',type:'class'},
+  {id:'mc4',day:2,time:'18:00-21:00',subject:'명석고2 백운성 국어',memo:'',type:'class'},
+  {id:'mc5',day:5,time:'19:00-22:00',subject:'서대전여고2 임유진 영어',memo:'',type:'class'},
+  {id:'mc6',day:6,time:'11:30-14:30',subject:'한빛고1 전겸주 영어',memo:'',type:'class'},
+];
+
+// ── MOD TYPES ──
+const MOD_T={
+  '보강':{bg:'#d3f9d8',color:'#2f9e44'},
+  '취소':{bg:'#ffe3e3',color:'#e03131'},
+  '변경':{bg:'#fff3bf',color:'#e07b00'},
+  '메모':{bg:'#d0ebff',color:'#1971c2'},
+};
+
+// ══════════════════════════════════════════
+//  COLOR FUNCTION
+// ══════════════════════════════════════════
+function evColor(info,tag){
+  if(tag==='1:1') return{bg:'#fff3bf',text:'#e67700'};
+  if(/영어|공영/.test(info))   return{bg:'#dbe4ff',text:'#3b5bdb'};
+  if(/수학|대수|확통|미적|수리|현행/.test(info)) return{bg:'#d3f9d8',text:'#2f9e44'};
+  if(/국어|화작/.test(info))   return{bg:'#f3d9fa',text:'#9c36b5'};
+  if(/과학|물리|지구|화학|통합/.test(info)) return{bg:'#ffe8cc',text:'#d9480f'};
+  if(/사회|생윤|역사/.test(info)) return{bg:'#c5f6fa',text:'#0c8599'};
+  if(/스페인|독일|일본|프랑스/.test(info)) return{bg:'#ffd6e7',text:'#c2255c'};
+  return{bg:'#e7f5ff',text:'#1971c2'};
+}
+const LEGEND_ITEMS=[
+  {label:'1:1 수업',bg:'#fff3bf',text:'#e67700'},
+  {label:'영어',bg:'#dbe4ff',text:'#3b5bdb'},
+  {label:'수학계열',bg:'#d3f9d8',text:'#2f9e44'},
+  {label:'국어',bg:'#f3d9fa',text:'#9c36b5'},
+  {label:'과학계열',bg:'#ffe8cc',text:'#d9480f'},
+  {label:'사회계열',bg:'#c5f6fa',text:'#0c8599'},
+  {label:'외국어',bg:'#ffd6e7',text:'#c2255c'},
+];
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function dkey(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function isToday(d){return dkey(d)===dkey(NOW);}
+function si(d){return(d.getDay()+6)%7;}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function esc(s){return(''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function getCL(k){return JSON.parse(localStorage.getItem('cl_'+k)||'[]');}
+function saveCL(k,a){localStorage.setItem('cl_'+k,JSON.stringify(a));}
+function getUrg(){return JSON.parse(localStorage.getItem('urg_v2')||'[]');}
+function saveUrg(a){localStorage.setItem('urg_v2',JSON.stringify(a));}
+function getMods(k){return JSON.parse(localStorage.getItem('mod_'+k)||'[]');}
+function saveMods(k,a){localStorage.setItem('mod_'+k,JSON.stringify(a));}
+function getMine(){return JSON.parse(localStorage.getItem('my_sched_v2')||'null');}
+function saveMine(a){localStorage.setItem('my_sched_v2',JSON.stringify(a));}
+function fmtAgo(iso){const d=new Date(iso),diff=Math.floor((NOW-d)/86400000);if(diff===0)return'오늘';if(diff===1)return'어제';if(diff<7)return diff+'일 전';return`${d.getMonth()+1}/${d.getDate()}`;}
+function shortName(info){return info.replace(/^[^\s]*고\d*\s*/,'').replace(/^[^\s]*중\d*\s*/,'').slice(0,12);}
+
+// ══════════════════════════════════════════
+//  TAB SWITCH + HEADER NAV
+// ══════════════════════════════════════════
+let activeTab='cal';
+function switchTab(t){
+  activeTab=t;
+  ['cal','week','urgent','mine'].forEach(x=>{
+    const cap=x.charAt(0).toUpperCase()+x.slice(1);
+    document.getElementById('tab'+cap).classList.toggle('hidden',x!==t);
+    document.getElementById('tb'+cap).classList.toggle('active',x===t);
+  });
+  renderHdrNav();
+  if(t==='week')renderWeek();
+  if(t==='urgent')renderUrgList();
+  if(t==='mine')renderMine();
+}
+function renderHdrNav(){
+  const nav=document.getElementById('hdrNav');
+  if(activeTab==='cal'){
+    nav.innerHTML=`<button class="hn-btn" onclick="calPrev()">‹ 이전달</button><span class="hn-label" id="hnCalLabel">${calY}년 ${calM+1}월</span><button class="hn-btn" onclick="calNext()">다음달 ›</button><button class="hn-today" onclick="calGoToday()">오늘</button>`;
+  } else if(activeTab==='week'){
+    const mon=getMon(wOff),sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    nav.innerHTML=`<button class="hn-btn" onclick="weekPrev()">‹ 이전주</button><span class="hn-label" id="hnWeekLabel">${mon.getMonth()+1}/${mon.getDate()} ~ ${sun.getMonth()+1}/${sun.getDate()}</span><button class="hn-btn" onclick="weekNext()">다음주 ›</button><button class="hn-today" onclick="weekGoToday()">오늘</button>`;
+  } else {
+    nav.innerHTML='';
+  }
+}
+
+// ══════════════════════════════════════════
+//  URGENT BADGE
+// ══════════════════════════════════════════
+function refreshUrgBadge(){
+  const n=getUrg().filter(x=>!x.done).length;
+  const el=document.getElementById('urgTabBadge');
+  el.textContent=n; el.className='tab-badge'+(n===0?' zero':'');
+}
+
+// ══════════════════════════════════════════
+//  TAB 1: CALENDAR
+// ══════════════════════════════════════════
+let calY=NOW.getFullYear(),calM=NOW.getMonth(),selDate=null,dSchedOpen=true;
+
+function renderCal(){
+  const lbl=document.getElementById('hnCalLabel');
+  if(lbl)lbl.textContent=`${calY}년 ${calM+1}월`;
+  const grid=document.getElementById('calGrid');grid.innerHTML='';
+  const first=new Date(calY,calM,1),last=new Date(calY,calM+1,0);
+  const off=(first.getDay()+6)%7;
+  const total=Math.ceil((off+last.getDate())/7)*7;
+  for(let c=0;c<total;c++){
+    const dn=c-off+1;
+    const date=new Date(calY,calM,dn);
+    const k=dkey(date);
+    const other=dn<1||dn>last.getDate();
+    const isSat=date.getDay()===6,isSun=date.getDay()===0;
+    const td=isToday(date);
+    const sel=selDate&&dkey(selDate)===k;
+    const cls=other?[]:getCL(k);
+    const mods=other?[]:getMods(k);
+    const sched=SCH[si(date)];
+    const hasUrg=cls.some(x=>x.urg&&!x.done);
+    const hasMod=mods.length>0;
+    const MAX_EV=4;
+    const evShown=sched.slice(0,MAX_EV);
+    const evMore=sched.length-MAX_EV;
+    const cell=document.createElement('div');
+    cell.className='c-cell'+(td?' today':'')+(isSat?' sat':'')+(isSun?' sun':'')+(other?' other':'')+(sel?' selected':'');
+    if(!other) cell.onclick=()=>selectDate(date);
+    const chipsHtml=evShown.map(s=>{
+      const c=evColor(s.info,s.tag);
+      const t=s.time.split('-')[0];
+      const nm=shortName(s.info);
+      return`<div class="c-ev" style="background:${c.bg};color:${c.text}"><span class="c-ev-time">${t}</span>${esc(nm)}</div>`;
+    }).join('');
+    cell.innerHTML=`<div class="c-top"><span class="c-num">${date.getDate()}</span>${td?'<span class="c-today-dot"></span>':''}${hasUrg?'<span class="c-urg-dot" style="margin-left:auto">🚨</span>':hasMod?'<span class="c-mod-dot" style="margin-left:auto">📌</span>':''}</div><div class="c-events">${chipsHtml}${evMore>0?`<div class="c-more">+${evMore}개 더</div>`:''}</div>`;
+    grid.appendChild(cell);
+  }
+  // legend
+  const leg=document.getElementById('calLegend');
+  leg.innerHTML=LEGEND_ITEMS.map(l=>`<div class="leg-item"><div class="leg-dot" style="background:${l.bg};outline:1px solid ${l.text}33"></div>${l.label}</div>`).join('');
+}
+
+function calPrev(){calM--;if(calM<0){calM=11;calY--;}renderCal();}
+function calNext(){calM++;if(calM>11){calM=0;calY++;}renderCal();}
+function calGoToday(){calY=NOW.getFullYear();calM=NOW.getMonth();selectDate(new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate()));}
+
+function selectDate(date){
+  selDate=date;
+  document.getElementById('detailPanel').classList.remove('collapsed');
+  renderCal();
+  renderDetail();
+}
+
+function renderDetail(){
+  if(!selDate)return;
+  const date=selDate,k=dkey(date);
+  const dow=si(date);
+  const isSat=date.getDay()===6,isSun=date.getDay()===0;
+  const td=isToday(date);
+  const sched=SCH[dow];
+  const mods=getMods(k);
+  const cls=getCL(k);
+  const nc=isSat?'sat':isSun?'sun':'';
+  const dp=document.getElementById('detailPanel');
+  dp.innerHTML=`
+    <div class="d-head">
+      <div class="d-dayname ${nc}">${DAY_NAMES[dow]}${td?'<span class="d-today-pill">오늘</span>':''}</div>
+      <div class="d-date">${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일</div>
+    </div>
+    <div class="d-body">
+      <div class="d-sec">
+        <div class="d-sec-tog" onclick="toggleDSched()">
+          <span>📋 수업 (${sched.length}개)</span><span id="dSchedIcon">${dSchedOpen?'▲':'▼'}</span>
+        </div>
+        <div id="dSchedBody" style="display:${dSchedOpen?'block':'none'}">
+          ${sched.map(s=>{const c=evColor(s.info,s.tag);return`<div class="ev-row"><div class="ev-color-bar" style="background:${c.text}"></div><div class="ev-info"><div class="ev-time">${s.time}</div><div class="ev-name">${esc(s.info)}${s.tag?`<span class="ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('')}
+        </div>
+      </div>
+      <div class="mod-sec">
+        <div class="mod-title">📌 변경사항 (${mods.length}) <button class="mod-add-btn" onclick="toggleModForm()">+ 추가</button></div>
+        <div id="modForm" style="display:none;"><div class="mod-form">
+          <div class="mod-fr"><select id="modType">${Object.keys(MOD_T).map(t=>`<option>${t}</option>`).join('')}</select><input type="text" id="modTime" placeholder="시간"></div>
+          <input type="text" id="modInfo" placeholder="내용">
+          <input type="text" id="modTeacher" placeholder="강사 (선택)">
+          <button class="mod-ok" onclick="saveMod()">추가</button>
+        </div></div>
+        <div class="mod-list" id="modList"></div>
+      </div>
+      <div class="d-cl-sec">
+        <div class="d-cl-title">✅ 할 일 <span class="d-cl-cnt" id="dClCnt">${cls.length}</span></div>
+        <div class="cl-add">
+          <input type="text" id="dClInput" placeholder="할 일 추가 후 Enter..." maxlength="60" onkeydown="if(event.key==='Enter')addDCL()">
+          <button class="cl-add-btn" onclick="addDCL()">+</button>
+        </div>
+        <div class="cl-list" id="dClList"></div>
+      </div>
+    </div>`;
+  renderModList(k,mods);
+  renderDClList(k,cls);
+}
+
+function toggleDSched(){dSchedOpen=!dSchedOpen;document.getElementById('dSchedBody').style.display=dSchedOpen?'block':'none';document.getElementById('dSchedIcon').textContent=dSchedOpen?'▲':'▼';}
+function toggleModForm(){const f=document.getElementById('modForm');f.style.display=f.style.display==='none'?'block':'none';}
+function saveMod(){
+  if(!selDate)return;
+  const k=dkey(selDate);
+  const type=document.getElementById('modType').value;
+  const time=document.getElementById('modTime').value.trim();
+  const info=document.getElementById('modInfo').value.trim();
+  const teacher=document.getElementById('modTeacher').value.trim();
+  if(!info)return;
+  const a=getMods(k);a.push({id:uid(),type,time,info,teacher});saveMods(k,a);
+  ['modTime','modInfo','modTeacher'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('modForm').style.display='none';
+  renderModList(k,a);renderCal();
+}
+function renderModList(k,mods){
+  const el=document.getElementById('modList');if(!el)return;
+  if(!mods.length){el.innerHTML='<div style="font-size:11px;color:#ccc;">변경사항이 없습니다</div>';return;}
+  el.innerHTML=mods.map((m,i)=>{const st=MOD_T[m.type]||MOD_T['메모'];return`<div class="mod-item" style="background:${st.bg}"><span class="mod-badge" style="background:${st.color};color:white">${m.type}</span><div class="mod-body">${m.time?`<div class="mod-mtime" style="color:${st.color}">${esc(m.time)}</div>`:''}<div class="mod-mdesc">${esc(m.info)}</div>${m.teacher?`<div class="mod-mteacher">▸ ${esc(m.teacher)}</div>`:''}</div><button class="mod-del" onclick="delMod('${k}',${i})">×</button></div>`;}).join('');
+}
+function delMod(k,i){const a=getMods(k);a.splice(i,1);saveMods(k,a);renderModList(k,a);renderCal();}
+
+function renderDClList(k,items){
+  const el=document.getElementById('dClList');if(!el)return;
+  if(!items.length){el.innerHTML='<div class="cl-empty">할 일을 추가해보세요 😊</div>';return;}
+  el.innerHTML=items.map((it,i)=>`<div class="cl-item${it.done?' done':''}${it.urg?' urg':''}"><button class="cl-chk" onclick="dTog(${i})">✓</button><span class="cl-txt">${esc(it.text)}</span><button class="cl-urg-btn" onclick="dUrgTog(${i})">🚨</button><button class="cl-del-btn" onclick="dDel(${i})">×</button></div>`).join('');
+  const cnt=document.getElementById('dClCnt');if(cnt)cnt.textContent=items.length;
+}
+function addDCL(){if(!selDate)return;const k=dkey(selDate),inp=document.getElementById('dClInput'),txt=inp.value.trim();if(!txt)return;const a=getCL(k);a.push({id:uid(),text:txt,done:false,urg:false});saveCL(k,a);inp.value='';renderDClList(k,a);renderCal();}
+function dTog(i){const k=dkey(selDate),a=getCL(k);a[i].done=!a[i].done;saveCL(k,a);renderDClList(k,a);renderCal();}
+function dUrgTog(i){const k=dkey(selDate),a=getCL(k);a[i].urg=!a[i].urg;saveCL(k,a);renderDClList(k,a);renderCal();}
+function dDel(i){const k=dkey(selDate),a=getCL(k);a.splice(i,1);saveCL(k,a);renderDetail();renderCal();}
+
+// ══════════════════════════════════════════
+//  TAB 2: WEEKLY
+// ══════════════════════════════════════════
+let wOff=0,wSO={};
+function getMon(off){const d=new Date(NOW),dow=d.getDay(),df=dow===0?-6:1-dow;d.setDate(d.getDate()+df+off*7);d.setHours(0,0,0,0);return d;}
+function getWD(i){const m=getMon(wOff),d=new Date(m);d.setDate(m.getDate()+i);return d;}
+
+function renderWeek(){
+  const mon=getMon(wOff),sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const lbl=document.getElementById('hnWeekLabel');
+  if(lbl)lbl.textContent=`${mon.getMonth()+1}/${mon.getDate()} ~ ${sun.getMonth()+1}/${sun.getDate()}`;
+  const grid=document.getElementById('weekGrid');grid.innerHTML='';
+  for(let i=0;i<7;i++){
+    const date=getWD(i),k=dkey(date),td=isToday(date),wend=i>=5;
+    const sched=SCH[i];
+    if(td&&wSO[i]===undefined)wSO[i]=true;
+    const col=document.createElement('div');
+    col.className='w-col'+(td?' today':'')+(wend?' wend':'');
+    const schedRowsHtml=sched.map(s=>{const c=evColor(s.info,s.tag);return`<div class="w-ev-row"><div class="w-ev-bar" style="background:${c.text}"></div><div class="w-ev-info"><div class="w-ev-time">${s.time}</div><div class="w-ev-name">${esc(s.info)}${s.tag?`<span class="w-ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="w-ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('');
+    col.innerHTML=`<div class="w-head"><div class="w-dayname">${DAY_NAMES[i]}${td?'<span class="w-today-tag">오늘</span>':''}</div><div class="w-date">${date.getMonth()+1}/${date.getDate()}</div><div class="w-cnt">수업 ${sched.length}개</div></div>
+    <div class="w-sched-tog" onclick="wTogSched(${i})"><span>수업 시간표</span><span id="wsi${i}">${wSO[i]?'▲':'▼'}</span></div>
+    <div class="w-sched-lst${wSO[i]?' open':''}" id="wsl${i}">${schedRowsHtml}</div>
+    <div class="w-cl-area"><div class="cl-add"><input type="text" id="wci${i}" placeholder="할 일 추가..." maxlength="60" onkeydown="if(event.key==='Enter')wAddCL(${i})"><button class="cl-add-btn" onclick="wAddCL(${i})">+</button></div><div class="cl-list" id="wcl${i}"></div></div>`;
+    grid.appendChild(col);
+    renderWCL(i,k);
+  }
+}
+function wTogSched(i){wSO[i]=!wSO[i];document.getElementById('wsl'+i).classList.toggle('open',wSO[i]);document.getElementById('wsi'+i).textContent=wSO[i]?'▲':'▼';}
+function renderWCL(i,k){
+  const el=document.getElementById('wcl'+i);if(!el)return;
+  const items=getCL(k);
+  if(!items.length){el.innerHTML='<div class="cl-empty">할 일 없음</div>';return;}
+  el.innerHTML=items.map((it,idx)=>`<div class="cl-item${it.done?' done':''}${it.urg?' urg':''}"><button class="cl-chk" onclick="wTog(${i},${idx})">✓</button><span class="cl-txt">${esc(it.text)}</span><button class="cl-urg-btn" onclick="wUrgTog(${i},${idx})">🚨</button><button class="cl-del-btn" onclick="wDel(${i},${idx})">×</button></div>`).join('');
+}
+function wAddCL(i){const k=dkey(getWD(i)),inp=document.getElementById('wci'+i),txt=inp.value.trim();if(!txt)return;const a=getCL(k);a.push({id:uid(),text:txt,done:false,urg:false});saveCL(k,a);inp.value='';renderWCL(i,k);}
+function wTog(i,idx){const k=dkey(getWD(i)),a=getCL(k);a[idx].done=!a[idx].done;saveCL(k,a);renderWCL(i,k);}
+function wUrgTog(i,idx){const k=dkey(getWD(i)),a=getCL(k);a[idx].urg=!a[idx].urg;saveCL(k,a);renderWCL(i,k);}
+function wDel(i,idx){const k=dkey(getWD(i)),a=getCL(k);a.splice(idx,1);saveCL(k,a);renderWCL(i,k);}
+function weekPrev(){wOff--;wSO={};renderWeek();renderHdrNav();}
+function weekNext(){wOff++;wSO={};renderWeek();renderHdrNav();}
+function weekGoToday(){wOff=0;wSO={};renderWeek();renderHdrNav();}
+
+// ══════════════════════════════════════════
+//  TAB 3: URGENT
+// ══════════════════════════════════════════
+let urgF='all';
+function setUF(f){
+  urgF=f;
+  ['all','active','done'].forEach((x,i)=>document.getElementById('uf'+i).classList.toggle('active',x===f));
+  renderUrgList();
+}
+function renderUrgList(){
+  refreshUrgBadge();
+  const all=getUrg();
+  let items=urgF==='active'?all.filter(x=>!x.done):urgF==='done'?all.filter(x=>x.done):all;
+  const el=document.getElementById('urgList');
+  if(!items.length){el.innerHTML=`<div class="urg-empty">${urgF==='done'?'완료된 항목 없음':urgF==='active'?'급박한 사안이 없습니다 👍':'항목이 없습니다'}</div>`;return;}
+  el.innerHTML=items.map(it=>{
+    const oi=all.indexOf(it);
+    return`<div class="urg-item${it.done?' done':''}"><button class="urg-chk" onclick="urgTog(${oi})">✓</button><div class="urg-body"><div class="urg-text">${esc(it.text)}</div>${it.createdAt?`<div class="urg-meta">${fmtAgo(it.createdAt)} 등록</div>`:''}</div><button class="urg-del" onclick="urgDel(${oi})">×</button></div>`;
+  }).join('');
+}
+function addUrg(){const inp=document.getElementById('urgInput'),txt=inp.value.trim();if(!txt)return;const a=getUrg();a.unshift({id:uid(),text:txt,done:false,createdAt:new Date().toISOString()});saveUrg(a);inp.value='';renderUrgList();}
+function urgTog(i){const a=getUrg();a[i].done=!a[i].done;saveUrg(a);renderUrgList();}
+function urgDel(i){const a=getUrg();a.splice(i,1);saveUrg(a);renderUrgList();}
+document.getElementById('urgInput').addEventListener('keydown',e=>{if(e.key==='Enter')addUrg();});
+
+// ══════════════════════════════════════════
+//  TAB 4: MY SCHEDULE
+// ══════════════════════════════════════════
+let mineFormOpen=false;
+function toggleMineForm(){mineFormOpen=!mineFormOpen;document.getElementById('mineForm').style.display=mineFormOpen?'block':'none';}
+function saveMineClass(){
+  const day=parseInt(document.getElementById('mfDay').value);
+  const time=document.getElementById('mfTime').value.trim();
+  const subj=document.getElementById('mfSubj').value.trim();
+  const memo=document.getElementById('mfMemo').value.trim();
+  if(!subj)return;
+  const a=getMine()||[];
+  a.push({id:uid(),day,time,subject:subj,memo,type:'class'});
+  saveMine(a);
+  ['mfTime','mfSubj','mfMemo'].forEach(id=>document.getElementById(id).value='');
+  mineFormOpen=false;document.getElementById('mineForm').style.display='none';
+  renderMine();
+}
+function delMineClass(id){saveMine((getMine()||[]).filter(x=>x.id!==id));renderMine();}
+
+function renderMine(){
+  const all=getMine()||MY_DEFAULT;
+  const cols=document.getElementById('mineCols');
+  const WORK_HOURS=['14:00-22:00','14:00-22:00','14:00-22:00','14:00-22:00',null,'14:00-22:00','11:30-21:00'];
+  cols.innerHTML=DAY_NAMES.map((name,i)=>{
+    const isOff=i===4;
+    const workEntry=all.find(x=>x.day===i&&x.type==='work');
+    const classes=all.filter(x=>x.day===i&&x.type==='class').sort((a,b)=>a.time.localeCompare(b.time));
+    const workHours=workEntry?workEntry.time:WORK_HOURS[i];
+    const headClass=isOff?'off':workHours?'work':'nowork';
+    return`<div class="mine-col">
+      <div class="mine-col-head ${headClass}">
+        <div class="mine-col-dayname">${name}</div>
+        <div class="mine-col-hours">${isOff?'🏖️ 휴무':workHours?'🕑 '+workHours:'근무 없음'}</div>
+      </div>
+      <div class="mine-col-body">
+        ${isOff?'<div class="mine-off-msg">🏖️<br>휴무</div>':
+          classes.length?classes.map(c=>{
+            const cv=evColor(c.subject,'');
+            return`<div class="mine-card" style="background:${cv.bg}">
+              ${c.time?`<div class="mine-card-time" style="color:${cv.text}">${esc(c.time)}</div>`:''}
+              <div class="mine-card-subj">${esc(c.subject)}</div>
+              ${c.memo?`<div class="mine-card-memo">${esc(c.memo)}</div>`:''}
+              <button class="mine-card-del" onclick="delMineClass('${c.id}')">×</button>
+            </div>`;
+          }).join(''):'<div class="mine-empty">수업 없음</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+// 첫 실행 시 내 시간표 기본 데이터 저장
+if(!getMine()) saveMine(MY_DEFAULT);
+
+refreshUrgBadge();
+renderCal();
+renderHdrNav();
+// 오늘 날짜 자동 선택
+selectDate(new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate()));
+</script>
+</body>
+</html>
