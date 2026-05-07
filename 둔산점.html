@@ -434,9 +434,7 @@ const MY_DEFAULT=[
 // ── MOD TYPES ──
 const MOD_T={
   '보강':{bg:'#d3f9d8',color:'#2f9e44'},
-  '취소':{bg:'#ffe3e3',color:'#e03131'},
-  '변경':{bg:'#fff3bf',color:'#e07b00'},
-  '메모':{bg:'#d0ebff',color:'#1971c2'},
+  '휴강':{bg:'#ffe3e3',color:'#e03131'},
 };
 
 // ══════════════════════════════════════════
@@ -543,9 +541,12 @@ function renderCal(){
       const c=evColor(s.info,s.tag,si(date),s.time);
       const t=s.time.split('-')[0];
       const nm=shortName(s.info);
-      return`<div class="c-ev" style="background:${c.bg};color:${c.text}"><span class="c-ev-time">${t}</span>${esc(nm)}</div>`;
+      const cancelled=mods.some(m=>m.type==='휴강'&&m.schKey===`${s.time}|${s.info}`);
+      return cancelled
+        ?`<div class="c-ev" style="background:#f1f3f5;color:#bbb;text-decoration:line-through"><span class="c-ev-time">${t}</span>${esc(nm)}</div>`
+        :`<div class="c-ev" style="background:${c.bg};color:${c.text}"><span class="c-ev-time">${t}</span>${esc(nm)}</div>`;
     }).join('');
-    const modChipsHtml=mods.map(m=>{const st=MOD_T[m.type]||MOD_T['메모'];return`<div class="c-ev" style="background:${st.bg};color:${st.color}"><span style="font-weight:700;margin-right:2px">[${m.type}]</span>${m.info?esc(m.info.slice(0,8)):''}</div>`;}).join('');
+    const modChipsHtml=mods.filter(m=>m.type==='보강').map(m=>{const st=MOD_T['보강'];const t=m.time?m.time.split('-')[0]:'';return`<div class="c-ev" style="background:${st.bg};color:${st.color}"><span style="font-weight:700;margin-right:2px">[보강]</span>${t?`<span class="c-ev-time">${t}</span>`:''}${esc((m.info||'').slice(0,7))}</div>`;}).join('');
     cell.innerHTML=`<div class="c-top"><span class="c-num">${date.getDate()}</span>${td?'<span class="c-today-dot"></span>':''}${hasUrg?'<span class="c-urg-dot" style="margin-left:auto">🚨</span>':''}</div><div class="c-events">${chipsHtml}${modChipsHtml}${evMore>0?`<div class="c-more">+${evMore}개 더</div>`:''}</div>`;
     grid.appendChild(cell);
   }
@@ -587,15 +588,19 @@ function renderDetail(){
           <span>📋 수업 (${sched.length}개)</span><span id="dSchedIcon">${dSchedOpen?'▲':'▼'}</span>
         </div>
         <div id="dSchedBody" style="display:${dSchedOpen?'block':'none'}">
-          ${sched.map(s=>{const c=evColor(s.info,s.tag,dow,s.time);return`<div class="ev-row"><div class="ev-color-bar" style="background:${c.text}"></div><div class="ev-info"><div class="ev-time">${s.time}</div><div class="ev-name">${esc(s.info)}${s.tag?`<span class="ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('')}
+          ${sched.map(s=>{const c=evColor(s.info,s.tag,dow,s.time);const cancelled=mods.some(m=>m.type==='휴강'&&m.schKey===`${s.time}|${s.info}`);return`<div class="ev-row"${cancelled?' style="opacity:.45"':''}><div class="ev-color-bar" style="background:${cancelled?'#ccc':c.text}"></div><div class="ev-info"><div class="ev-time"${cancelled?' style="text-decoration:line-through;color:#bbb"':''}>${s.time}</div><div class="ev-name"${cancelled?' style="text-decoration:line-through;color:#bbb"':''}>${esc(s.info)}${s.tag&&!cancelled?`<span class="ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="ev-teacher"${cancelled?' style="color:#ccc"':''}>▸ ${esc(s.teacher)}</div></div></div>`;}).join('')}
         </div>
       </div>
       <div class="mod-sec">
         <div class="mod-title">📌 변경사항 (${mods.length}) <button class="mod-add-btn" onclick="toggleModForm()">+ 추가</button></div>
         <div id="modForm" style="display:none;"><div class="mod-form">
-          <div class="mod-fr"><select id="modType">${Object.keys(MOD_T).map(t=>`<option>${t}</option>`).join('')}</select><input type="text" id="modTime" placeholder="시간"></div>
-          <input type="text" id="modInfo" placeholder="내용">
-          <input type="text" id="modTeacher" placeholder="강사 (선택)">
+          <div class="mod-fr"><select id="modType" onchange="dModTypeChange()">${Object.keys(MOD_T).map(t=>`<option>${t}</option>`).join('')}</select></div>
+          <div id="dModInputs" style="display:flex;flex-direction:column;gap:3px">
+            <input type="text" id="modTime" placeholder="시간 (예: 16:00-17:30)">
+            <input type="text" id="modInfo" placeholder="수업명">
+            <input type="text" id="modTeacher" placeholder="강사 (선택)">
+          </div>
+          <select id="modClass" style="display:none">${sched.map(s=>`<option value="${esc(s.time)}|${esc(s.info)}">${s.time} ${esc(s.info)}</option>`).join('')}</select>
           <button class="mod-ok" onclick="saveMod()">추가</button>
         </div></div>
         <div class="mod-list" id="modList"></div>
@@ -615,25 +620,37 @@ function renderDetail(){
 
 function toggleDSched(){dSchedOpen=!dSchedOpen;document.getElementById('dSchedBody').style.display=dSchedOpen?'block':'none';document.getElementById('dSchedIcon').textContent=dSchedOpen?'▲':'▼';}
 function toggleModForm(){const f=document.getElementById('modForm');f.style.display=f.style.display==='none'?'block':'none';}
+function dModTypeChange(){
+  const type=document.getElementById('modType').value;
+  document.getElementById('dModInputs').style.display=type==='보강'?'flex':'none';
+  document.getElementById('modClass').style.display=type==='휴강'?'block':'none';
+}
 function saveMod(){
   if(!selDate)return;
   const k=dkey(selDate);
   const type=document.getElementById('modType').value;
-  const time=document.getElementById('modTime').value.trim();
-  const info=document.getElementById('modInfo').value.trim();
-  const teacher=document.getElementById('modTeacher').value.trim();
-  if(!info)return;
-  const a=getMods(k);a.push({id:uid(),type,time,info,teacher});saveMods(k,a);
-  ['modTime','modInfo','modTeacher'].forEach(id=>document.getElementById(id).value='');
+  let mod;
+  if(type==='보강'){
+    const time=document.getElementById('modTime').value.trim();
+    const info=document.getElementById('modInfo').value.trim();
+    const teacher=document.getElementById('modTeacher').value.trim();
+    if(!info)return;
+    mod={id:uid(),type,time,info,teacher};
+  } else {
+    const val=document.getElementById('modClass').value;
+    const pi=val.indexOf('|');
+    mod={id:uid(),type,schKey:val,time:val.slice(0,pi),info:val.slice(pi+1),teacher:''};
+  }
+  const a=getMods(k);a.push(mod);saveMods(k,a);
   document.getElementById('modForm').style.display='none';
-  renderModList(k,a);renderCal();
+  renderDetail();renderCal();
 }
 function renderModList(k,mods){
   const el=document.getElementById('modList');if(!el)return;
   if(!mods.length){el.innerHTML='<div style="font-size:11px;color:#ccc;">변경사항이 없습니다</div>';return;}
-  el.innerHTML=mods.map((m,i)=>{const st=MOD_T[m.type]||MOD_T['메모'];return`<div class="mod-item" style="background:${st.bg}"><span class="mod-badge" style="background:${st.color};color:white">${m.type}</span><div class="mod-body">${m.time?`<div class="mod-mtime" style="color:${st.color}">${esc(m.time)}</div>`:''}<div class="mod-mdesc">${esc(m.info)}</div>${m.teacher?`<div class="mod-mteacher">▸ ${esc(m.teacher)}</div>`:''}</div><button class="mod-del" onclick="delMod('${k}',${i})">×</button></div>`;}).join('');
+  el.innerHTML=mods.map((m,i)=>{const st=MOD_T[m.type]||{bg:'#f1f3f5',color:'#868e96'};return`<div class="mod-item" style="background:${st.bg}"><span class="mod-badge" style="background:${st.color};color:white">${m.type}</span><div class="mod-body">${m.time?`<div class="mod-mtime" style="color:${st.color}">${esc(m.time)}</div>`:''}<div class="mod-mdesc">${esc(m.info)}</div>${m.teacher?`<div class="mod-mteacher">▸ ${esc(m.teacher)}</div>`:''}</div><button class="mod-del" onclick="delMod('${k}',${i})">×</button></div>`;}).join('');
 }
-function delMod(k,i){const a=getMods(k);a.splice(i,1);saveMods(k,a);renderModList(k,a);renderCal();}
+function delMod(k,i){const a=getMods(k);a.splice(i,1);saveMods(k,a);renderDetail();renderCal();}
 
 function renderDClList(k,items){
   const el=document.getElementById('dClList');if(!el)return;
@@ -665,13 +682,20 @@ function renderWeek(){
     const col=document.createElement('div');
     col.className='w-col'+(td?' today':'')+(wend?' wend':'');
     const schedRowsHtml=sched.map(s=>{const c=evColor(s.info,s.tag,i,s.time);return`<div class="w-ev-row"><div class="w-ev-bar" style="background:${c.text}"></div><div class="w-ev-info"><div class="w-ev-time">${s.time}</div><div class="w-ev-name">${esc(s.info)}${s.tag?`<span class="w-ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="w-ev-teacher">▸ ${esc(s.teacher)}</div></div></div>`;}).join('');
+    const wMods=getMods(k);
     const modTypeOpts=Object.keys(MOD_T).map(t=>`<option>${t}</option>`).join('');
+    const classOpts=sched.map(s=>`<option value="${esc(s.time)}|${esc(s.info)}">${s.time} ${esc(s.info)}</option>`).join('');
     col.innerHTML=`<div class="w-head"><div class="w-dayname">${DAY_NAMES[i]}${td?'<span class="w-today-tag">오늘</span>':''}</div><div class="w-date">${date.getMonth()+1}/${date.getDate()}</div><div class="w-cnt">수업 ${sched.length}개</div></div>
     <div class="w-sched-tog" onclick="wTogSched(${i})"><span>수업 시간표</span><span id="wsi${i}">${wSO[i]?'▲':'▼'}</span></div>
-    <div class="w-sched-lst${wSO[i]?' open':''}" id="wsl${i}">${schedRowsHtml}</div>
+    <div class="w-sched-lst${wSO[i]?' open':''}" id="wsl${i}">${sched.map(s=>{const c=evColor(s.info,s.tag,i,s.time);const cancelled=wMods.some(m=>m.type==='휴강'&&m.schKey===`${s.time}|${s.info}`);return`<div class="w-ev-row"${cancelled?' style="opacity:.45"':''}><div class="w-ev-bar" style="background:${cancelled?'#ccc':c.text}"></div><div class="w-ev-info"><div class="w-ev-time"${cancelled?' style="text-decoration:line-through;color:#bbb"':''}>${s.time}</div><div class="w-ev-name"${cancelled?' style="text-decoration:line-through;color:#bbb"':''}>${esc(s.info)}${s.tag&&!cancelled?`<span class="w-ev-tag" style="background:${c.bg};color:${c.text}">${s.tag}</span>`:''}</div><div class="w-ev-teacher"${cancelled?' style="color:#ccc"':''}>▸ ${esc(s.teacher)}</div></div></div>`;}).join('')}</div>
     <div class="w-mod-area">
       <div class="w-mod-head"><span class="w-mod-head-label">📌 변경사항</span><button class="w-mod-add-btn" onclick="wTogModForm(${i})">+ 추가</button></div>
-      <div class="w-mod-form" id="wmf${i}" style="display:none"><select id="wmt${i}">${modTypeOpts}</select><input type="text" id="wmtime${i}" placeholder="시간 (예: 16:00-17:30)"><input type="text" id="wminfo${i}" placeholder="수업명 또는 내용"><button class="w-mod-save" onclick="wSaveMod(${i})">추가</button></div>
+      <div class="w-mod-form" id="wmf${i}" style="display:none">
+        <select id="wmt${i}" onchange="wModTypeChange(${i})">${modTypeOpts}</select>
+        <div id="wmInputs${i}" style="display:flex;flex-direction:column;gap:3px"><input type="text" id="wmtime${i}" placeholder="시간 (예: 16:00-17:30)"><input type="text" id="wminfo${i}" placeholder="수업명"><input type="text" id="wmteacher${i}" placeholder="강사 (선택)"></div>
+        <select id="wmclass${i}" style="display:none">${classOpts}</select>
+        <button class="w-mod-save" onclick="wSaveMod(${i})">추가</button>
+      </div>
       <div id="wml${i}"></div>
     </div>
     <div class="w-cl-area"><div class="cl-add"><input type="text" id="wci${i}" placeholder="할 일 추가..." maxlength="60" onkeydown="if(event.key==='Enter')wAddCL(${i})"><button class="cl-add-btn" onclick="wAddCL(${i})">+</button></div><div class="cl-list" id="wcl${i}"></div></div>`;
@@ -695,28 +719,39 @@ function weekPrev(){wOff--;wSO={};renderWeek();renderHdrNav();}
 function weekNext(){wOff++;wSO={};renderWeek();renderHdrNav();}
 function weekGoToday(){wOff=0;wSO={};renderWeek();renderHdrNav();}
 function wTogModForm(i){const f=document.getElementById('wmf'+i);f.style.display=f.style.display==='none'?'flex':'none';}
+function wModTypeChange(i){
+  const type=document.getElementById('wmt'+i).value;
+  document.getElementById('wmInputs'+i).style.display=type==='보강'?'flex':'none';
+  document.getElementById('wmclass'+i).style.display=type==='휴강'?'block':'none';
+}
 function wSaveMod(i){
   const k=dkey(getWD(i));
   const type=document.getElementById('wmt'+i).value;
-  const time=document.getElementById('wmtime'+i).value.trim();
-  const info=document.getElementById('wminfo'+i).value.trim();
-  if(!info)return;
-  const a=getMods(k);a.push({id:uid(),type,time,info,teacher:''});saveMods(k,a);
-  document.getElementById('wmtime'+i).value='';
-  document.getElementById('wminfo'+i).value='';
+  let mod;
+  if(type==='보강'){
+    const time=document.getElementById('wmtime'+i).value.trim();
+    const info=document.getElementById('wminfo'+i).value.trim();
+    const teacher=document.getElementById('wmteacher'+i).value.trim();
+    if(!info)return;
+    mod={id:uid(),type,time,info,teacher};
+  } else {
+    const val=document.getElementById('wmclass'+i).value;
+    const pi=val.indexOf('|');
+    mod={id:uid(),type,schKey:val,time:val.slice(0,pi),info:val.slice(pi+1),teacher:''};
+  }
+  const a=getMods(k);a.push(mod);saveMods(k,a);
   document.getElementById('wmf'+i).style.display='none';
-  renderWMods(i,k);renderCal();
+  renderWeek();renderCal();
 }
 function renderWMods(i,k){
   const el=document.getElementById('wml'+i);if(!el)return;
   const mods=getMods(k);
   if(!mods.length){el.innerHTML='<div style="font-size:10px;color:#ccc;padding:2px 0">없음</div>';return;}
-  el.innerHTML=mods.map((m,idx)=>{const st=MOD_T[m.type]||MOD_T['메모'];return`<div class="w-mod-item" style="background:${st.bg}"><span class="w-mod-badge" style="background:${st.color};color:white">${m.type}</span><div class="w-mod-body">${m.time?`<span class="w-mod-mtime" style="color:${st.color}">${esc(m.time)}</span>`:''}<span>${esc(m.info)}</span></div><button class="w-mod-del" onclick="wDelMod('${k}',${idx})">×</button></div>`;}).join('');
+  el.innerHTML=mods.map((m,idx)=>{const st=MOD_T[m.type]||{bg:'#f1f3f5',color:'#868e96'};return`<div class="w-mod-item" style="background:${st.bg}"><span class="w-mod-badge" style="background:${st.color};color:white">${m.type}</span><div class="w-mod-body">${m.time?`<span class="w-mod-mtime" style="color:${st.color}">${esc(m.time)}</span>`:''}<span>${esc(m.info)}</span></div><button class="w-mod-del" onclick="wDelMod('${k}',${idx})">×</button></div>`;}).join('');
 }
 function wDelMod(k,idx){
   const a=getMods(k);a.splice(idx,1);saveMods(k,a);
-  for(let i=0;i<7;i++){if(dkey(getWD(i))===k){renderWMods(i,k);break;}}
-  renderCal();
+  renderWeek();renderCal();
 }
 
 // ══════════════════════════════════════════
