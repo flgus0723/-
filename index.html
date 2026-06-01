@@ -306,14 +306,51 @@ body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;h
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:#c5cae9;border-radius:4px;}
+
+/* ── LOGIN ── */
+.login-overlay{position:fixed;inset:0;background:#f1f3f9;display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:white;border-radius:16px;padding:36px 32px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.1);}
+.login-title{font-size:22px;font-weight:bold;color:#1a1a2e;margin-bottom:6px;text-align:center;}
+.login-sub{font-size:13px;color:#999;text-align:center;margin-bottom:24px;}
+.login-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.login-field label{font-size:12px;font-weight:600;color:#555;}
+.login-field input{border:1.5px solid #e8eaf6;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:14px;outline:none;}
+.login-field input:focus{border-color:#3b5bdb;}
+.login-btn{width:100%;background:#3b5bdb;color:white;border:none;border-radius:8px;padding:11px;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;margin-top:4px;}
+.login-btn:hover{background:#364fc7;}
+.login-err{color:#e03131;font-size:12px;text-align:center;margin-top:8px;min-height:18px;}
+.hdr-user{font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;flex-shrink:0;}
+.hdr-logout{background:rgba(255,255,255,.18);border:none;color:white;padding:4px 10px;border-radius:6px;font-family:inherit;font-size:11px;cursor:pointer;flex-shrink:0;white-space:nowrap;}
+.hdr-logout:hover{background:rgba(255,255,255,.3);}
 </style>
 </head>
 <body>
 
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-title">📚 둔산점</div>
+    <div class="login-sub">아이디와 비밀번호를 입력해주세요</div>
+    <div class="login-field">
+      <label>아이디</label>
+      <input type="text" id="loginUser" placeholder="아이디" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>비밀번호</label>
+      <input type="password" id="loginPass" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-title">📚 둔산점</div>
+  <span id="syncStatus" style="font-size:13px;opacity:.85;flex-shrink:0;" title="동기화 상태"></span>
   <div class="hdr-nav" id="hdrNav"></div>
+  <span id="userDisplay" class="hdr-user"></span>
+  <button class="hdr-logout" onclick="logout()">로그아웃</button>
 </div>
 
 <!-- TAB BAR -->
@@ -419,7 +456,104 @@ body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#f1f3f9;h
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ══════════════════════════════════════════
+//  SUPABASE 설정 ← 아래 두 줄만 채워주세요!
+// ══════════════════════════════════════════
+const SUPABASE_URL='https://tlyxgqnhoxrwapvaddni.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRseXhncW5ob3hyd2FwdmFkZG5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyODkyNTcsImV4cCI6MjA5NTg2NTI1N30.rf6Bxv3yp4Oah1gyzBSRGy9uByN_6YJXl3YvgMkzvyA';
+const SB_ON=!SUPABASE_URL.includes('XXXXXXXXXX')&&!SUPABASE_KEY.includes('REPLACE_ME');
+const sb=SB_ON?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+
+function setSyncStatus(s){
+  const el=document.getElementById('syncStatus');if(!el)return;
+  const m={syncing:'☁️ 동기화 중...',ok:'✅',offline:'📵 오프라인'};
+  el.textContent=m[s]||'';
+}
+async function dbSet(key,val){
+  if(!SB_ON)return;
+  try{
+    await sb.from('app_data').upsert({key,value:val,updated_at:new Date().toISOString()});
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('offline');console.warn('sync err',e);}
+}
+function reRenderFromKey(key){
+  if(key.startsWith('cl_')||key.startsWith('mod_')){
+    renderCal();
+    if(selDate){if(key==='cl_'+dkey(selDate)||key==='mod_'+dkey(selDate))renderDetail();}
+    if(activeTab==='week')renderWeek();
+  }else if(key==='urg_v2'){
+    refreshUrgBadge();
+    if(activeTab==='urgent')renderUrgList();
+  }else if(key==='my_sched_v3'){
+    if(activeTab==='mine')renderMine();
+  }
+}
+async function initSync(){
+  if(!SB_ON){setSyncStatus('offline');return;}
+  setSyncStatus('syncing');
+  try{
+    const{data,error}=await sb.from('app_data').select('key,value');
+    if(error)throw error;
+    if(data)data.forEach(r=>localStorage.setItem(r.key,JSON.stringify(r.value)));
+    setSyncStatus('ok');
+    // 실시간 동기화
+    sb.channel('app_changes')
+      .on('postgres_changes',{event:'*',schema:'public',table:'app_data'},payload=>{
+        if(payload.new&&payload.new.key){
+          localStorage.setItem(payload.new.key,JSON.stringify(payload.new.value));
+          reRenderFromKey(payload.new.key);
+          setSyncStatus('ok');
+        }
+      }).subscribe();
+  }catch(e){setSyncStatus('offline');console.warn('Supabase 연결 실패:',e);}
+}
+
+// ══════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════
+function getSession(){return JSON.parse(localStorage.getItem('session')||'null');}
+function saveSession(s){localStorage.setItem('session',JSON.stringify(s));}
+function clearSession(){localStorage.removeItem('session');}
+function updateUserDisplay(){
+  const s=getSession();
+  const el=document.getElementById('userDisplay');
+  if(el&&s)el.textContent=s.display_name;
+}
+function logout(){
+  clearSession();
+  document.getElementById('loginOverlay').style.display='flex';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginErr').textContent='';
+  document.getElementById('userDisplay').textContent='';
+}
+async function doLogin(){
+  const username=document.getElementById('loginUser').value.trim();
+  const password=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginErr');
+  if(!username||!password){errEl.textContent='아이디와 비밀번호를 입력해주세요.';return;}
+  errEl.textContent='확인 중...';
+  if(!SB_ON){errEl.textContent='서버 연결 오류. 잠시 후 다시 시도해주세요.';return;}
+  try{
+    const{data}=await sb.from('users').select('*').eq('username',username).eq('password',password).maybeSingle();
+    if(!data){errEl.textContent='아이디 또는 비밀번호가 틀렸습니다.';return;}
+    saveSession({username:data.username,display_name:data.display_name||data.username});
+    await initApp();
+  }catch(e){errEl.textContent='로그인 중 오류가 발생했습니다.';console.error(e);}
+}
+async function initApp(){
+  document.getElementById('loginOverlay').style.display='none';
+  updateUserDisplay();
+  await initSync();
+  if(!getMine())saveMine(MY_DEFAULT);
+  refreshUrgBadge();
+  renderCal();
+  renderHdrNav();
+  selectDate(new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate()));
+}
+
 // ══════════════════════════════════════════
 //  SCHEDULE DATA (0=월 ~ 6=일)
 // ══════════════════════════════════════════
@@ -491,13 +625,13 @@ function si(d){return(d.getDay()+6)%7;}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 function esc(s){return(''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function getCL(k){return JSON.parse(localStorage.getItem('cl_'+k)||'[]');}
-function saveCL(k,a){localStorage.setItem('cl_'+k,JSON.stringify(a));}
+function saveCL(k,a){localStorage.setItem('cl_'+k,JSON.stringify(a));dbSet('cl_'+k,a);}
 function getUrg(){return JSON.parse(localStorage.getItem('urg_v2')||'[]');}
-function saveUrg(a){localStorage.setItem('urg_v2',JSON.stringify(a));}
+function saveUrg(a){localStorage.setItem('urg_v2',JSON.stringify(a));dbSet('urg_v2',a);}
 function getMods(k){return JSON.parse(localStorage.getItem('mod_'+k)||'[]');}
-function saveMods(k,a){localStorage.setItem('mod_'+k,JSON.stringify(a));}
+function saveMods(k,a){localStorage.setItem('mod_'+k,JSON.stringify(a));dbSet('mod_'+k,a);}
 function getMine(){return JSON.parse(localStorage.getItem('my_sched_v3')||'null');}
-function saveMine(a){localStorage.setItem('my_sched_v3',JSON.stringify(a));}
+function saveMine(a){localStorage.setItem('my_sched_v3',JSON.stringify(a));dbSet('my_sched_v3',a);}
 function fmtAgo(iso){const d=new Date(iso),diff=Math.floor((NOW-d)/86400000);if(diff===0)return'오늘';if(diff===1)return'어제';if(diff<7)return diff+'일 전';return`${d.getMonth()+1}/${d.getDate()}`;}
 function shortName(info){return info.replace(/^[^\s]*고\d*\s*/,'').replace(/^[^\s]*중\d*\s*/,'').slice(0,12);}
 
@@ -874,14 +1008,13 @@ function renderMine(){
 // ══════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════
-// 첫 실행 시 내 시간표 기본 데이터 저장
-if(!getMine()) saveMine(MY_DEFAULT);
-
-refreshUrgBadge();
-renderCal();
-renderHdrNav();
-// 오늘 날짜 자동 선택
-selectDate(new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate()));
+(async()=>{
+  if(!getSession()){
+    document.getElementById('loginOverlay').style.display='flex';
+    return;
+  }
+  await initApp();
+})();
 </script>
 </body>
 </html>
